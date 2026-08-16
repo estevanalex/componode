@@ -1,0 +1,46 @@
+### ADR-077 — v1 entity schema (consolidated)
+
+**Context**: Across ADRs + Q1–Q51 we accumulated entity definitions in pieces.
+The full schema needs consolidation.
+
+**Decision**: **Full v1 schema (27 tables) approved as proposed in Q45 +
+ComponentGroup addition.** See `docs/data-model.md` (to be generated in spec
+003) for the complete column-level reference. Key entities:
+`digital_products`, `components`, `component_instances`, `component_groups`,
+`line_of_businesses`, `teams`, `persons` (unified Person/UserAccount per
+[ADR-033](./ADR-033-person-useraccount-unification.md)). Junction tables: `product_composes`, `product_consumes_from`,
+`product_depends_on_component`, `component_depends_on_component`,
+`component_sources_from`, `component_exposes`. FK columns for 1-to-many:
+`digital_products.lobOwnerId`/`teamOwnerId`, `components.teamOwnerId`/
+`componentGroupId`, `persons.teamId`. Operational: `importer_configs`,
+`import_runs`, `import_run_errors`, `sessions`, `oidc_config`, `app_settings`,
+`password_reset_tokens`. Audit: `edge_changes`, `entity_changes`. Kysely:
+`kysely_migration`, `kysely_migration_lock`. **Slug on `persons`/`teams`/`LOBs`**
+(URL consistency). **Nullable `createdBy`/`updatedBy`** (importer-driven changes
+have no human actor). **Nullable `triggeredBy`** for scheduled runs.
+
+> **UPDATE (Session 2, [ADR-099](./ADR-099-secure-password-and-credential-handling.md)/100)**: Three additions from the secure
+> development grilling:
+> 1. **`password_reset_tokens`** table (table 28) — `id uuid PK`, `userId`
+>    FK→`persons`, `tokenHash text not null` (SHA-256 of the 32-byte reset
+>    token), `expiresAt timestamptz not null`, `usedAt timestamptz` (nullable,
+>    set when the token is consumed), `createdAt timestamptz not null`.
+> 2. **`entity_changes`/`edge_changes`** carry denormalized
+>    `createdByName`/`updatedByName` (text, captured at write time) for
+>    historical context when the `persons` FK is nulled ([ADR-100](./ADR-100-audit-log-integrity.md)'s GDPR
+>    `ON DELETE SET NULL`). The `createdBy`/`updatedBy` FKs are
+>    `ON DELETE SET NULL`.
+> 3. **`sessions.id`** is `text` (not `uuid`) — holds a 32-byte
+>    cryptographically random base64url token ([ADR-099](./ADR-099-secure-password-and-credential-handling.md)'s exception to
+>    [ADR-045](./ADR-045-entity-identifier-format.md)). All other entity PKs remain `uuid` (UUID v7).
+>
+> **Append-only triggers** ([ADR-100](./ADR-100-audit-log-integrity.md)): `BEFORE UPDATE OR DELETE` triggers on
+> `entity_changes`, `edge_changes`, `import_run_errors` raise an exception
+> unconditionally. `BEFORE UPDATE` trigger on `import_runs` raises if
+> `OLD.status` is terminal (`COMPLETED`/`FAILED`/`CANCELLED`/`INTERRUPTED`).
+
+**Rationale**: Consolidates 50+ decisions into one referenceable schema. The
+`ComponentGroup` (table 26) + `components.componentGroupId` FK (27) were added
+in the Session 2 review of Principle IV — a first-class entity for human-
+declared equivalence across distinct source assets, NOT a graph node (no
+`DEPENDS_ON` to a group; products depend on member components individually).

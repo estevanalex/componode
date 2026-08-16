@@ -203,7 +203,8 @@ The Constitution supersedes all other practices. Amendments require
 documentation, approval, and a migration plan. All PRs/reviews must verify
 compliance with the seven principles. Complexity must be justified against the
 principles (especially II, V, and VI). Use `researches/architecture-decisions.md`
-for runtime development guidance and ADR history.
+(the ADR index) and `researches/adrs/` (individual ADR files) for runtime
+development guidance and ADR history.
 
 ### v1.1 Roadmap (deferred from v1, queued for the next cycle)
 

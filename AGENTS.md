@@ -42,10 +42,11 @@ Business own Business Capability Products that compose shared Platform Products.
 ### Foundational decisions
 
 All architectural decisions are recorded in
-`researches/architecture-decisions.md` (**102 ADRs** from the 2026-08-16
-grilling sessions: ADR-001–032 from Session 1, ADR-033–083 from Session 2
-architecture grilling, ADR-084–102 from Session 2 secure development
-grilling). **Read that file before starting any implementation work.** The 7
+`researches/architecture-decisions.md` (the index) with individual ADRs in
+`researches/adrs/` (**102 ADRs** from the 2026-08-16 grilling sessions:
+ADR-001–032 from Session 1, ADR-033–083 from Session 2 architecture grilling,
+ADR-084–102 from Session 2 secure development grilling). **Read the index and
+the relevant individual ADRs before starting any implementation work.** The 7
 constitution principles in `.specify/memory/constitution.md` govern all
 specs — every spec is checked against them. The 19 secure development rules
 (ADR-084–102) are binding for all runtime code. Changes to any decision
@@ -99,7 +100,8 @@ require a new grilling session or an explicit superseding ADR.
 │   ├── importer-api-url/          # API URL (OpenAPI/health) importer
 │   └── importer-mcp-server/       # MCP server importer
 ├── researches/                    # Architecture research and decisions
-│   ├── architecture-decisions.md  # 102 ADRs from the grilling sessions
+│   ├── architecture-decisions.md  # ADR index (links to individual ADR files)
+│   ├── adrs/                      # Individual ADR files (ADR-001 through ADR-102)
 │   └── component_taxonomy_research.md  # Industry survey grounding the taxonomy
 ├── specs/                         # DYNAMIC — created per feature by spec-kit
 │   └── {NNN-feature-name}/        # v1 split: 001-foundation → 002-importer-framework
@@ -224,7 +226,8 @@ preferences.
 - `OWNS` (LineOfBusiness/Team → DigitalProduct/Component) and `BELONGS_TO`
   (Person → Team) are for ownership.
 - Do not introduce a parallel or competing relationship type without updating
-  `researches/architecture-decisions.md` first.
+  `researches/architecture-decisions.md` (and the relevant ADR in
+  `researches/adrs/`) first.
 
 ### Graph persistence (ADR-048)
 
@@ -477,8 +480,9 @@ preferences.
 ## Secure Development
 
 These rules are binding for all runtime code. Violations are bugs, not style
-preferences. They are ratified as ADR-084 through ADR-102 in
-`researches/architecture-decisions.md`.
+preferences. They are ratified as ADR-084 through ADR-102, with each rule in
+its own file under `researches/adrs/` (see `researches/architecture-decisions.md`
+for the index).
 
 ### SQL injection prevention (ADR-084)
 
@@ -934,6 +938,7 @@ Dependencies: 001 first → 002 → 003 + 004 (overlap) → 005 + 006.
 
 | Document | Role |
 |---|---|
-| `researches/architecture-decisions.md` | **102 ADRs from the grilling sessions — read before any implementation** |
+| `researches/architecture-decisions.md` | **ADR index — links to 102 individual ADR files in `researches/adrs/`. Read before any implementation** |
+| `researches/adrs/` | **Individual ADR files (ADR-001 through ADR-102)** |
 | `researches/component_taxonomy_research.md` | **Industry survey grounding the 24-category taxonomy** |
 | `.specify/memory/constitution.md` | **7 constitution principles governing all specs — read before any spec** |
