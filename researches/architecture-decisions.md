@@ -914,6 +914,14 @@ session by indexed PK (sub-millisecond), checks `revokedAt IS NULL` and
 Revocation = `UPDATE ... SET revokedAt`. "Revoke all for user" = `WHERE userId
 = ?`.
 
+> **CORRECTION (Session 2, ADR-099)**: `sessions.id` is a **32-byte
+> cryptographically random token** (base64url-encoded), NOT a UUID v7. This
+> is an exception to ADR-045's "UUID v7 for all entities" — session tokens
+> are credentials (the cookie value), not entity identifiers, and require
+> cryptographic randomness (256-bit). UUID v7's 74 bits of randomness is
+> brute-force infeasible but not the standard for session tokens. The
+> `sessions.id` column is `text` (not `uuid`) to hold the base64url token.
+
 **Rationale**: Satisfies "checked on every request" + "revocable" without
 adding Redis. A session lookup by indexed PK is sub-millisecond on Postgres;
 v1 is a single-org internal tool, not a high-traffic public site. "List active
@@ -951,6 +959,12 @@ buys nothing.
 universally recognized by tooling. UUID v7's time-sortability satisfies
 "time-sortable identifier." ULID-as-text is 26 bytes (~63% larger) with no
 benefit when `slug` exists for human-readable refs.
+
+> **EXCEPTION (Session 2, ADR-099)**: `sessions.id` is NOT a UUID v7. It is
+> a 32-byte cryptographically random token (base64url-encoded `text` column).
+> Session tokens are credentials (the cookie value), not entity identifiers,
+> and require 256-bit cryptographic randomness. See ADR-043/ADR-099 for
+> details.
 
 ---
 
@@ -1093,6 +1107,21 @@ a real operational + compliance need.
 3. **`edge_changes`** — logs all edge mutations (`COMPOSES`/`CONSUMES_FROM`/
    `DEPENDS_ON`/`SOURCES_FROM`/`EXPOSES`/`OWNS`/`BELONGS_TO` ADDED/REMOVED)
    with an optional `reason` field.
+
+> **UPDATE (Session 2, ADR-100)**: The audit tables (`entity_changes`,
+> `edge_changes`, `import_run_errors`) are **append-only** — enforced by
+> `BEFORE UPDATE OR DELETE` triggers that raise an exception
+> unconditionally. No role (including Admin) can modify or delete audit
+> entries. Corrections are new entries (`action: CORRECTION`, referencing
+> the original entry's ID). `import_runs` is NOT append-only but is
+> immutable after terminal state (`COMPLETED`/`FAILED`/`CANCELLED`/
+> `INTERRUPTED`) via a `BEFORE UPDATE` trigger. `entity_changes` and
+> `edge_changes` carry denormalized `createdByName`/`updatedByName`
+> snapshots (captured at write time) for historical context. The
+> `createdBy`/`updatedBy` FKs to `persons` are `ON DELETE SET NULL` (when a
+> person is hard-deleted per ADR-047, the audit entry's FK is nulled but
+> the name snapshot retains the name — a deliberate tradeoff of audit
+> integrity vs. right-to-be-forgotten). No retention policy in v1.
 
 **Rationale**: Matches the curation asymmetry (ADR-019): the meaning layer
 (edges, ownership, composition) is human-judgment, high-value, low-frequency —
@@ -1667,11 +1696,31 @@ ADR-033). Junction tables: `product_composes`, `product_consumes_from`,
 `component_sources_from`, `component_exposes`. FK columns for 1-to-many:
 `digital_products.lobOwnerId`/`teamOwnerId`, `components.teamOwnerId`/
 `componentGroupId`, `persons.teamId`. Operational: `importer_configs`,
-`import_runs`, `import_run_errors`, `sessions`, `oidc_config`, `app_settings`.
-Audit: `edge_changes`, `entity_changes`. Kysely: `kysely_migration`,
-`kysely_migration_lock`. **Slug on `persons`/`teams`/`LOBs`** (URL
-consistency). **Nullable `createdBy`/`updatedBy`** (importer-driven changes
+`import_runs`, `import_run_errors`, `sessions`, `oidc_config`, `app_settings`,
+`password_reset_tokens`. Audit: `edge_changes`, `entity_changes`. Kysely:
+`kysely_migration`, `kysely_migration_lock`. **Slug on `persons`/`teams`/`LOBs`**
+(URL consistency). **Nullable `createdBy`/`updatedBy`** (importer-driven changes
 have no human actor). **Nullable `triggeredBy`** for scheduled runs.
+
+> **UPDATE (Session 2, ADR-099/100)**: Three additions from the secure
+> development grilling:
+> 1. **`password_reset_tokens`** table (table 28) — `id uuid PK`, `userId`
+>    FK→`persons`, `tokenHash text not null` (SHA-256 of the 32-byte reset
+>    token), `expiresAt timestamptz not null`, `usedAt timestamptz` (nullable,
+>    set when the token is consumed), `createdAt timestamptz not null`.
+> 2. **`entity_changes`/`edge_changes`** carry denormalized
+>    `createdByName`/`updatedByName` (text, captured at write time) for
+>    historical context when the `persons` FK is nulled (ADR-100's GDPR
+>    `ON DELETE SET NULL`). The `createdBy`/`updatedBy` FKs are
+>    `ON DELETE SET NULL`.
+> 3. **`sessions.id`** is `text` (not `uuid`) — holds a 32-byte
+>    cryptographically random base64url token (ADR-099's exception to
+>    ADR-045). All other entity PKs remain `uuid` (UUID v7).
+>
+> **Append-only triggers** (ADR-100): `BEFORE UPDATE OR DELETE` triggers on
+> `entity_changes`, `edge_changes`, `import_run_errors` raise an exception
+> unconditionally. `BEFORE UPDATE` trigger on `import_runs` raises if
+> `OLD.status` is terminal (`COMPLETED`/`FAILED`/`CANCELLED`/`INTERRUPTED`).
 
 **Rationale**: Consolidates 50+ decisions into one referenceable schema. The
 `ComponentGroup` (table 26) + `components.componentGroupId` FK (27) were added
@@ -1812,3 +1861,484 @@ designed for specs that large). Horizontal layers deliver no user value
 incrementally. Foundation-first acknowledges the irreducible core (contracts +
 schema + auth + backend skeleton), then vertical slices on top. Each spec is
 a demoable milestone.
+
+---
+
+## Session 2 — Secure Development Grilling (ADR-084 through ADR-102)
+
+> The following 19 decisions ratify the secure development rules grilled
+> after the architecture grilling session. They cover coding-time security
+> practices that the architecture-level ADRs (001–083) don't address: SQL
+> injection, XSS, CSRF, CORS, security headers, secret handling in logs and
+> commits, dependency scanning, TLS, input validation, error response
+> sanitization, rate limiting, importer sandboxing, password/credential
+> handling, audit log integrity, database connection security, and content
+> injection in JSONB fields. These rules are binding for all runtime code.
+
+### ADR-084 — SQL injection prevention
+
+**Context**: Kysely parameterizes by default, but exposes `sql.raw()` and
+`sql.fragment()` for advanced cases. A contributor hitting a query-builder
+limitation (e.g. ADR-051's recursive CTE) might reach for `sql.raw()` and
+introduce a SQL injection vector.
+
+**Decision**: **All database queries MUST use Kysely's parameterized query
+builder.** `sql.raw()` and `sql.fragment()` are PROHIBITED in application
+code (services, routes, repositories). In migrations, `sql.raw()` is
+permitted for DDL the builder cannot express (e.g. trigger creation for
+ADR-050's cycle detection), with a `// SECURITY: raw SQL in migration, no
+user input` comment. Any `sql.raw()` in application code requires a
+documented security justification in the PR and a `// SECURITY:` comment. A
+CI grep check flags `sql.raw()` usage without the comment.
+
+**Rationale**: Kysely's builder is the default safe path. The exception for
+migrations acknowledges that triggers and CHECK constraints (ADR-078) need
+raw DDL. The CI grep check makes the `// SECURITY:` comment requirement
+enforceable, not just "reviewed by a human."
+
+---
+
+### ADR-085 — XSS prevention
+
+**Context**: React escapes by default, but `dangerouslySetInnerHTML`,
+`href="javascript:..."`, and `target="_blank"` without `rel="noopener
+noreferrer"` are XSS/tabnabbing vectors.
+
+**Decision**: **The frontend MUST NOT use `dangerouslySetInnerHTML` in v1.**
+All user-controlled content is rendered through React's default escaping. If
+rich-text rendering is required in a future spec, it MUST use a sanitizing
+library (e.g. `dompurify`) with an allow-listed tag/attribute set. URL
+fields MUST be validated against an allow-list of protocols (`http`,
+`https`, `mailto`) before rendering as `href` — a shared `safeUrl(url):
+string | null` utility in `packages/frontend` centralizes this. All
+`target="_blank"` links MUST include `rel="noopener noreferrer"` — a shared
+`<ExternalLink>` component enforces this.
+
+**Rationale**: No v1 feature needs HTML rendering (all content is structured
+data). The three XSS vectors that exist even without `dangerouslySetInnerHTML`
+(HTML injection, protocol injection, reverse tabnabbing) are each covered by
+a concrete, enforceable artifact (`safeUrl`, `<ExternalLink>`).
+
+---
+
+### ADR-086 — Session cookie security flags
+
+**Context**: ADR-043 mandates server-side sessions. The session ID is the
+cookie value. Without `HttpOnly`/`Secure`/`SameSite`, the cookie is
+vulnerable to XSS theft, HTTP sniffing, and CSRF.
+
+**Decision**: **`HttpOnly: true`, `Secure: true` in production, `SameSite:
+Lax`.** Cookie name configurable (`SESSION_COOKIE_NAME`, default
+`componode_session`). In dev, `Secure` is automatically `false` when
+`NODE_ENV !== 'production'` (implicit, cannot be forgotten). A deployer
+running production without TLS can explicitly set `SESSION_COOKIE_SECURE=
+false`. `SameSite: Strict` is an optional deployer setting
+(`SESSION_COOKIE_SAMESITE=strict`). No `__Host-` / `__Secure-` prefix in v1
+(dev-HTTP conflict).
+
+**Rationale**: `Lax` blocks CSRF-relevant verbs (POST/PUT/DELETE) while
+allowing top-level GET navigations (standard for single-org tools).
+`Strict` is available for high-security environments. The implicit dev
+override (`NODE_ENV`) avoids the "forgot to set the env var" failure mode.
+No `__Host-` prefix because it requires TLS in all environments.
+
+---
+
+### ADR-087 — CSRF protection
+
+**Context**: ADR-086's `SameSite: Lax` blocks cross-site POST/PUT/DELETE on
+modern browsers, but legacy browsers and subdomain attacks are gaps.
+
+**Decision**: **Double-submit cookie pattern on all state-changing routes
+(`POST`/`PUT`/`PATCH`/`DELETE`).** The backend sets a CSRF token cookie
+(`componode_csrf`, `HttpOnly: false`, `SameSite: Lax`, `Secure` matches
+session cookie), and the frontend sends the token as an `X-CSRF-Token`
+header on every state-changing request. The backend's `preHandler` compares
+cookie to header — mismatch = `403`. Universal (not conditional on
+deployment type). GET routes MUST NOT have side effects (ADR-094).
+
+**Rationale**: Double-submit is stateless and simple (no server-side token
+store). Layered with `SameSite: Lax` (ADR-086). Universal because the
+complexity is the same either way, and a public-facing deployment
+(ADR-075) is a real CSRF target.
+
+---
+
+### ADR-088 — CORS configuration
+
+**Context**: In production, the frontend is same-origin (backend serves
+static via `fastify-static`), so CORS is not needed. In dev, the Vite dev
+server runs on a different port. A misconfigured `Access-Control-Allow-
+Origin: *` with `Allow-Credentials: true` is a security hole.
+
+**Decision**: **CORS is opt-in (default empty = disabled).** Explicit
+allow-list of exact origins (`CORS_ALLOWED_ORIGINS` env var, comma-
+separated, no wildcards, no patterns). In dev, the Vite proxy
+(`server.proxy['/api'] = 'http://localhost:3000'`) is the primary mechanism
+— CORS is not needed. When `CORS_ALLOWED_ORIGINS` is non-empty:
+`Access-Control-Allow-Credentials: true` for allow-listed origins,
+`Access-Control-Max-Age: 3600`, allowed methods are the route's actual
+methods (not `*`). When empty: the CORS preHandler is a no-op.
+
+**Rationale**: Opt-in minimizes the CORS attack surface to "only what the
+deployer explicitly configures." The Vite proxy eliminates the dev CORS
+need. Exact origins only (no patterns) prevents subdomain-takeover
+exploitation.
+
+---
+
+### ADR-089 — Security headers
+
+**Context**: Without security headers, the application is vulnerable to
+MIME sniffing, clickjacking, downgrade attacks, and resource injection.
+
+**Decision**: **`@fastify/helmet` (or equivalent) on all HTTP responses.**
+Headers: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`,
+`Strict-Transport-Security: max-age=31536000` (production only, no
+`includeSubDomains`), `Content-Security-Policy: default-src 'self';
+script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;
+connect-src 'self'; frame-ancestors 'none'`, `Referrer-Policy: strict-
+origin-when-cross-origin`, `Permissions-Policy: geolocation=(),
+microphone=(), camera=()`. HSTS is production-only. CSP `style-src
+'unsafe-inline'` is a documented tradeoff for Tailwind CSS + shadcn/ui.
+Both `X-Frame-Options` and `frame-ancestors` are set (defense in depth).
+Headers apply to all routes including `/metrics`.
+
+**Rationale**: `includeSubDomains` dropped from HSTS (deployer safety —
+avoids breaking non-HTTPS subdomains). Nonce-based CSP is a v1.1
+enhancement (Tailwind's inline styles require `'unsafe-inline'` for now).
+Both frame-ancestors and X-Frame-Options for legacy browser support.
+
+---
+
+### ADR-090 — No secrets in logs
+
+**Context**: Pino is structured logging (JSON) — every field in the
+metadata object is persisted. A `log.info({ secrets }, "importer starting")`
+would write all resolved secrets to the log file in plaintext.
+
+**Decision**: **Pino redaction filter strips prohibited field paths.**
+Redacted paths: `password`, `passwordHash`, `clientSecret`, `secretRefs`,
+`secrets`, `secrets.*`, `sessionToken`, `sessionId`, `authorization`,
+`cookie`, `oidcSubject`, `email`, `importer_configs.secretRefs`,
+`importer_configs.scope`. Replaced with `"[REDACTED]"`. Importers receive an
+abstracted `Logger` (ADR-067) pre-configured with the same redaction. When
+logging an importer's configuration, log only safe metadata (`importerName`,
+`configId`, `label`, `schedule`), never the full `importer_configs` row.
+When logging a request, log headers selectively. Stack traces are logged
+as-is (documented tradeoff — sanitizing is over-engineering for v1).
+
+**Rationale**: Structured logging makes accidental secret leakage easy and
+persistent. The redaction filter catches known field names. The
+`importer_configs.scope` redaction catches the case where scope contains
+account IDs or tokens. Stack trace sanitization is deferred (the risk of
+embedded credentials in URLs is mitigated by `secrets.*` redaction).
+
+---
+
+### ADR-091 — No secrets in commits
+
+**Context**: A committed secret is permanently in git history. For an
+open-source project on GitHub, a committed AWS key is scraped by bots and
+used for cryptomining within minutes.
+
+**Decision**: **Secrets MUST NOT be committed.** `.gitignore` includes
+`.env`, `.env.*`, `*.pem`, `*.key`, `*.p12`, `secrets/`. CI MUST run a
+secret scanner on every PR (enforceable boundary). Pre-commit hook (via
+`husky`) is a SHOULD (bypassable with `--no-verify`). The example
+`docker-compose.yml` uses `${BOOTSTRAP_ADMIN_PASSWORD:?must set}` and
+`env_file: .env`. `.env.example` files use placeholder values. Test
+fixtures use clearly fake values and are allow-listed in the scanner config.
+If a secret is committed: revert (force-push to rewrite history if
+sensitive — exception to the "no force-push" rule), rotate, document in a
+post-mortem.
+
+**Rationale**: CI is the enforceable boundary (PRs can't bypass it). The
+force-push exception for secret removal overrides the general "no
+force-push" rule — the cost of a leaked secret in history exceeds the cost
+of rewriting history. Test fixtures are allow-listed to avoid false
+positives on `test:test` credentials.
+
+---
+
+### ADR-092 — Dependency scanning
+
+**Context**: The dependency tree is the largest external attack surface
+(npm supply chain). A vulnerable dependency is exploitable even if
+Componode's own code is secure.
+
+**Decision**: **CI MUST run a dependency vulnerability scanner on every
+PR.** `high`/`critical` severity blocks the PR (CI fails), unless the
+vulnerability is in a dev-only dependency that does not ship to production
+AND the PR includes a `// SECURITY:` comment. `moderate`/`low` are warnings.
+Dependencies MUST be pinned to exact versions (no `^` or `~`). Version
+bumps via `changesets` or dedicated PR. Newly published versions (less than
+7 days old) MUST NOT be used.
+
+**Rationale**: Exact pinning prevents floating ranges from auto-resolving
+to new (potentially malicious) versions. The 7-day rule extends the
+existing AGENTS.md rule to version bumps of existing deps. The dev-only
+override prevents blocking PRs for non-exploitable vulnerabilities in test
+utilities.
+
+---
+
+### ADR-093 — TLS / HTTPS for production
+
+**Context**: Without TLS, the session cookie, OIDC authorization code flow,
+and API responses are transmitted in plaintext.
+
+**Decision**: **Production MUST use HTTPS. Componode does not terminate TLS
+— TLS is terminated by the deployer's reverse proxy (nginx, Caddy, Traefik,
+or cloud LB).** The backend sets `Strict-Transport-Security` in production
+(ADR-089) and configures `trustProxy` to the proxy's IP (via
+`TRUSTED_PROXY_IP` env var, not `true`) to trust `X-Forwarded-Proto`/
+`X-Forwarded-Host` without allowing client spoofing. `docs/deployment.md`
+documents TLS setup for Caddy (automatic Let's Encrypt) and nginx
+(manual/explicit). The example `docker-compose.yml` includes a commented-
+out Caddy service. Dev runs over HTTP (no TLS required).
+
+**Rationale**: In-app TLS termination pushes cert management into the app
+(the proxy's job). `trustProxy` to proxy IP (not `true`) prevents client
+spoofing of `X-Forwarded-Proto`. Two proxy options documented (neutral, not
+opinionated). Dev is HTTP (localhost is not a sniffing risk).
+
+---
+
+### ADR-094 — GET routes must not have side effects
+
+**Context**: Rule 4's CSRF protection covers POST/PUT/PATCH/DELETE but not
+GET. A GET route with side effects is a CSRF vector (`<img src="...">`
+triggers it with the user's cookies).
+
+**Decision**: **GET/HEAD routes MUST be idempotent and side-effect-free
+with respect to domain state.** They MUST NOT mutate domain entities,
+trigger importer runs, modify sessions (other than `lastSeenAt` operational
+bookkeeping per ADR-043), or perform any action that changes persistent
+domain state. State-changing operations MUST use POST/PUT/PATCH/DELETE with
+CSRF protection (ADR-087). Operational bookkeeping (`sessions.lastSeenAt`
+write-throttled, `import_runs.lastPolledAt` if added) is permitted.
+Read-access auditing is NOT performed on GET routes in v1 (ADR-052 logs
+consequential state changes and human edits, not read access). If read-
+access auditing is added in a future spec, it MUST be asynchronous and
+decoupled from the GET route's response path.
+
+**Rationale**: The prohibition is on domain state changes, not operational
+bookkeeping (which is not CSRF-exploitable). Read-access auditing on GET
+routes would be a side effect + a potential CSRF vector; deferred to a
+future spec with proper design.
+
+---
+
+### ADR-095 — Input validation
+
+**Context**: Without route-boundary validation, a malformed request
+propagates into the service layer and the database, causing storage bloat,
+CHECK constraint violations, or injection vectors.
+
+**Decision**: **All API request inputs MUST be validated at the route
+boundary using Zod schemas.** Failed validation → `400` with
+`{code: "VALIDATION_FAILED", message, details: [{field, issue}]}` (ADR-071).
+Unknown fields rejected (Zod `.strict()`). Default max-lengths: 255 for
+names/labels, 100 for slugs, 2000 for descriptions, 100 for `resourceType`
+(specs may override with justification). Enum inputs validated against
+`core` constants (ADR-079). Shared schemas in `packages/core`, backend-only
+schemas in `packages/backend/src/routes/schemas/`. Fastify `bodyLimit: 1MB`
+default (configurable via `MAX_REQUEST_BODY_SIZE`).
+
+**Rationale**: Validating at the route boundary means the service layer
+receives typed, validated data. Sharing schemas in `core` enables frontend
+client-side validation (no drift). `.strict()` catches typos and prevents
+silent data loss. The body size limit prevents DoS via large request bodies.
+
+---
+
+### ADR-096 — Error responses must not leak internals
+
+**Context**: A raw error response (`500: TypeError at /app/packages/
+backend/src/services/...:42`) leaks the tech stack, file structure, and
+code flow to an attacker.
+
+**Decision**: **Error responses use `{code, message, details?}` (ADR-071)
+with controlled `code` enums.** `message`/`details` MUST NOT include stack
+traces, file paths, SQL text, raw DB errors, env var names, or internal
+service names. Stack traces logged server-side only (ADR-090). DB errors
+translated: `23505` → `409 DUPLICATE_SLUG`/`DUPLICATE_KEY`, `23514` → `400
+VALIDATION_FAILED`, `23503` → `409 REFERENTIAL_INTEGRITY`, `40P01` → `409
+CONFLICT_RETRY`, cycle-detection exception → `409 CYCLE_DETECTED` (with
+`details: {cycle: [productId, ...]}` — the cycle path is intentional, not
+a leak). In dev, a `debug` field is gated by `DEBUG_ERROR_DETAILS=true` env
+var (not `NODE_ENV`). The `debug` field is never populated for auth error
+codes (`AUTH_INVALID_CREDENTIALS`, `AUTH_RATE_LIMITED`,
+`AUTH_SESSION_EXPIRED`, `AUTH_FORBIDDEN`, `OIDC_CALLBACK_FAILED`).
+
+**Rationale**: The SQLSTATE mapping makes DB error translation consistent
+and enforceable. The `debug` field gated by explicit env var (not
+`NODE_ENV`) avoids misconfiguration leaks. Auth codes never get `debug` to
+prevent user enumeration or credential detail leakage. The cycle path in
+`details` is intentional (the user needs it to fix the cycle).
+
+---
+
+### ADR-097 — Rate limiting
+
+**Context**: Without rate limiting, a single user or compromised session
+can DoS the backend or Postgres. Importer triggers are a specific DoS
+vector.
+
+**Decision**: **Rate-limiting Fastify plugin with in-memory store for v1.**
+Login: 5 per username/IP per min. OIDC callback: 5 per IP per min.
+Registration: 3 per IP per min. Importer trigger: 10 per user per min.
+General API: 300 per user per min. `/metrics`: unlimited. Responses include
+`Retry-After` header. General API limit is per-user (session ID), not per-
+IP (corporate NAT safety). Multi-instance requires Redis (post-v1, known
+v1 limitation). All `/api/v1/*` routes are authenticated (Viewer minimum
+per ADR-054).
+
+**Rationale**: 300/min general limit accommodates dashboard polling (5
+concurrent run polls at 2s intervals = ~150/min) plus normal UI
+interactions. Per-user keying (not per-IP) prevents a corporate NAT with
+100 users from sharing a single limit. Importer trigger keyed per-user
+(ADR-039's per-config in-flight guard handles per-config spam).
+
+---
+
+### ADR-098 — Importer sandboxing
+
+**Context**: ADR-065 mandates importers depend only on `core`. But
+dependency boundaries don't prevent a compromised importer from reading
+`process.env.DATABASE_URL`, spawning a child process, or reading
+`~/.ssh/id_rsa`.
+
+**Decision**: **ESLint `no-restricted-imports` and `no-restricted-syntax`
+in importer packages.** PROHIBITED: `fs`, `fs/promises`, `fs-extra`,
+`process.env`, `child_process`, `execa`, `shelljs`, `eval`, `new Function`,
+`vm`, `import()`. PERMITTED: `fetch`/HTTP clients, `Logger`/`Tracer` from
+`core`, `validateDiscoveredAsset` from `core`, the importer's own package
+files. SDKs that default to `process.env` MUST be configured with explicit
+values from `secrets`/`config`. True process-level sandboxing (worker
+threads, separate containers) is post-v1. The ESLint rules are static
+enforcement — they prevent accidental leakage and catch malicious PRs at
+the CI boundary, but do not protect against a determined attacker who
+bypasses ESLint and passes review.
+
+**Rationale**: Static ESLint enforcement is the pragmatic v1 choice (the 7
+importers are core-team-written, contributor importers are reviewed PRs).
+The "no requests to own API" constraint was dropped (unforceable via static
+analysis — ESLint cannot determine the runtime URL of a `fetch()` call).
+
+---
+
+### ADR-099 — Secure password and credential handling
+
+**Context**: ADR-044 mandates Argon2id but doesn't cover password
+complexity, reset flows, secret lifecycle, or timing attacks.
+
+**Decision**: **Comprehensive password/credential handling.** (1) Argon2id
+via `@node-rs/argon2`, PHC format, configurable params (OWASP defaults: 19
+MiB, 2 iterations, 1 lane). (2) Minimum 12 characters, no maximum, no
+complexity rules (NIST SP 800-63B). (3) Password reset: Admin-triggered,
+32-byte base64url token, SHA-256 hashed in `password_reset_tokens` table,
+15-min expiry, single-use, Admin never knows the new password, email
+delivery post-v1. (4) OIDC client secret: `clientSecretRef`, in-memory only
+for token exchange. (5) Importer secrets: in-memory only for run duration,
+dereferenced after. (6) Bootstrap admin password: read once on empty-DB
+boot, hashed immediately. (7) Timing attacks: login hashes a dummy password
+for non-existent users. (8) **Session IDs are 32-byte cryptographically
+random (base64url), NOT UUID v7 — exception to ADR-045.** Session tokens are
+credentials, not entity identifiers, and require cryptographic randomness.
+
+**Rationale**: The session ID exception to ADR-045 is critical: UUID v7's
+74 bits of randomness is brute-force infeasible but not the standard for
+session tokens (256-bit crypto-random is). The token-based reset flow is
+more secure than "Admin sets temp password" (the Admin never knows the new
+password). The timing-attack mitigation (dummy hash) prevents user
+enumeration via response time differences.
+
+---
+
+### ADR-100 — Audit log integrity
+
+**Context**: ADR-052 defines audit tables but no rule says they're
+tamper-proof. A compromised Admin could edit `entity_changes` to cover
+tracks.
+
+**Decision**: **`entity_changes`, `edge_changes`, `import_run_errors` are
+append-only.** `BEFORE UPDATE OR DELETE` trigger on all three raises an
+exception unconditionally. No role — including Admin — can modify or delete
+audit entries. Corrections are new entries (`action: CORRECTION`,
+referencing the original entry's ID). `import_runs` is NOT append-only but
+is immutable after terminal state (`COMPLETED`/`FAILED`/`CANCELLED`/
+`INTERRUPTED`) via a `BEFORE UPDATE` trigger checking `OLD.status`.
+Operator notes on a run are `entity_changes` entries, not mutations on
+`import_runs`. **GDPR interaction**: `entity_changes.createdBy`/`updatedBy`
+are nullable FKs to `persons` with `ON DELETE SET NULL`. Denormalized
+`createdByName`/`updatedByName` snapshots (captured at write time) retain
+the name for historical context (deliberate tradeoff: audit integrity vs.
+right-to-be-forgotten). No retention policy in v1.
+
+**Rationale**: DB-level triggers are un-bypassable (application bugs can't
+skip them). The `import_runs` terminal-state immutability prevents
+post-hoc manipulation of run records. The GDPR `ON DELETE SET NULL` +
+denormalized name snapshot preserves the audit trail's usefulness while
+respecting hard-delete of persons. The name snapshot tradeoff is documented
+(audit integrity wins over complete right-to-be-forgotten for historical
+records).
+
+---
+
+### ADR-101 — Database connection security
+
+**Context**: The database connection is the crown-jewel trust boundary.
+Without TLS, the connection string and all query data are sniffable. Without
+pool limits, a burst of requests can exhaust Postgres connections. Without
+least-privilege, a SQL injection can `DROP DATABASE`.
+
+**Decision**: **(1) TLS: `DATABASE_SSL_MODE` env var (default `require` in
+production, `disable` in dev; `verify-full` for remote Postgres with
+`DATABASE_SSL_CA`). (2) Pool limits: `MAX_DB_CONNECTIONS` env var (default
+10), with documented pool budget calculation. (3) Credential rotation:
+update env var + restart. (4) Least-privilege DB user: `init-db.sql` script
+in the example `docker-compose.yml` creates a `componode` user with
+`CONNECT` + DML/DDL on `public` schema (not the Postgres superuser). (5)
+Migration privileges: single user for DDL+DML in v1; split
+(`MIGRATION_DATABASE_URL` for DDL, `DATABASE_URL` for DML-only) is v1.1.
+(6) Driver: chosen by spec 001-foundation; MUST support TLS, prepared
+statements, configurable pool limits.
+
+**Rationale**: `require` (not `verify-full`) as default because the Docker
+Compose deployment has Postgres on the same Docker network (low MITM risk).
+`verify-full` documented for remote Postgres. The `init-db.sql` is an
+enforceable artifact (not just documentation). The migration-privilege
+split is deferred to v1.1 (adds complexity for a hardened-deployment
+minority).
+
+---
+
+### ADR-102 — Content injection in JSONB fields
+
+**Context**: Importers yield arbitrary data in `Component.details` and
+`ComponentInstance.rawConfig`. A malicious external source could yield
+`details: {"xss": "<img src=x onerror=alert(1)>"}` or `rawConfig: {"url":
+"javascript:alert(1)"}`.
+
+**Decision**: **(1) Frontend rendering: JSONB fields MUST be rendered as
+structured data (text in React components, or JSON tree rendering values as
+text). MUST NOT pass through `dangerouslySetInnerHTML` (ADR-085), `eval()`,
+or any HTML/string interpretation. (2) URLs in JSONB: sanitized via
+`safeUrl()` (ADR-085) before rendering as `href`. JSON tree components MUST
+NOT auto-link URLs (or MUST sanitize if they do). (3) Markdown/rich-text
+rendering of JSONB is PROHIBITED in v1. If a future spec requires it, MUST
+use `react-markdown` + `rehype-sanitize` with allow-listed tags, and the
+raw markdown MUST be stored in a dedicated field (not free-form `details`).
+(4) Backend error responses: JSONB values in `details` are safe (React
+escapes), but MUST NOT be in error `message` strings. (5) Backend SQL:
+JSONB fields queried via Kysely's JSONB operators, never string
+interpolation (ADR-084).**
+
+**Rationale**: The `details`/`rawConfig` fields are the largest untrusted-
+data surface in the frontend. Rendering as structured data (text) is safe
+by default (React escapes). The markdown prohibition is explicit (a
+contributor might reach for a markdown renderer to show "rich" config —
+this rule blocks it in v1). The dedicated-field requirement for future
+markdown clearly marks rich-text content as requiring sanitization.

@@ -1,6 +1,6 @@
 # AGENTS.md — Project Context for AI Coding Agents
 
-> **Last updated**: 2026-08-16 (Session 2 grilling — 51 new ADRs, 7 constitution principles)
+> **Last updated**: 2026-08-16 (Session 2 grilling — 102 ADRs, 7 constitution principles, 19 secure development rules)
 > **Project**: Componode — open-source Digital Product Asset Management
 > **License**: Apache 2.0
 > **Repository**: https://github.com/estevanalex/componode
@@ -42,12 +42,14 @@ Business own Business Capability Products that compose shared Platform Products.
 ### Foundational decisions
 
 All architectural decisions are recorded in
-`researches/architecture-decisions.md` (**83 ADRs** from the 2026-08-16 grilling
-sessions: ADR-001–032 from Session 1, ADR-033–083 from Session 2). **Read that
-file before starting any implementation work.** The 7 constitution principles in
-`.specify/memory/constitution.md` govern all specs — every spec is checked
-against them. Changes to any decision require a new grilling session or an
-explicit superseding ADR.
+`researches/architecture-decisions.md` (**102 ADRs** from the 2026-08-16
+grilling sessions: ADR-001–032 from Session 1, ADR-033–083 from Session 2
+architecture grilling, ADR-084–102 from Session 2 secure development
+grilling). **Read that file before starting any implementation work.** The 7
+constitution principles in `.specify/memory/constitution.md` govern all
+specs — every spec is checked against them. The 19 secure development rules
+(ADR-084–102) are binding for all runtime code. Changes to any decision
+require a new grilling session or an explicit superseding ADR.
 
 ---
 
@@ -97,7 +99,7 @@ explicit superseding ADR.
 │   ├── importer-api-url/          # API URL (OpenAPI/health) importer
 │   └── importer-mcp-server/       # MCP server importer
 ├── researches/                    # Architecture research and decisions
-│   ├── architecture-decisions.md  # 83 ADRs from the grilling sessions
+│   ├── architecture-decisions.md  # 102 ADRs from the grilling sessions
 │   └── component_taxonomy_research.md  # Industry survey grounding the taxonomy
 ├── specs/                         # DYNAMIC — created per feature by spec-kit
 │   └── {NNN-feature-name}/        # v1 split: 001-foundation → 002-importer-framework
@@ -472,6 +474,414 @@ preferences.
 
 ---
 
+## Secure Development
+
+These rules are binding for all runtime code. Violations are bugs, not style
+preferences. They are ratified as ADR-084 through ADR-102 in
+`researches/architecture-decisions.md`.
+
+### SQL injection prevention (ADR-084)
+
+- All database queries MUST use Kysely's parameterized query builder.
+- `sql.raw()` and `sql.fragment()` are PROHIBITED in application code
+  (services, routes, repositories).
+- In migrations, `sql.raw()` is permitted for DDL the builder cannot express
+  (e.g. trigger creation for ADR-050's cycle detection), with a
+  `// SECURITY: raw SQL in migration, no user input` comment.
+- Any `sql.raw()` in application code requires a documented security
+  justification in the PR and a `// SECURITY:` comment. A CI grep check flags
+  `sql.raw()` usage without the comment.
+
+### XSS prevention (ADR-085)
+
+- The frontend MUST NOT use `dangerouslySetInnerHTML` in v1. All user-
+  controlled content is rendered through React's default escaping.
+- If rich-text rendering is required in a future spec, it MUST use a
+  sanitizing library (e.g. `dompurify`) with an allow-listed tag/attribute
+  set, documented in the spec, and reviewed in the PR.
+- URL fields (`url`, any `href` populated from data) MUST be validated
+  against an allow-list of protocols (`http`, `https`, `mailto`) before
+  rendering as `href`. `javascript:`, `data:`, and other protocol handlers
+  are rejected. A shared `safeUrl(url): string | null` utility in
+  `packages/frontend` centralizes this.
+- All `target="_blank"` links MUST include `rel="noopener noreferrer"` to
+  prevent reverse tabnabbing. A shared `<ExternalLink>` component enforces
+  this.
+
+### Session cookie security flags (ADR-086)
+
+- The session cookie MUST be set with `HttpOnly: true`, `Secure: true` in
+  production, and `SameSite: Lax`.
+- The cookie name is configurable (`SESSION_COOKIE_NAME`, default
+  `componode_session`).
+- In dev, `Secure` is automatically `false` when `NODE_ENV !== 'production'`
+  (no env var needed — the dev override is implicit and cannot be forgotten).
+- A deployer running production without TLS (not recommended) can explicitly
+  set `SESSION_COOKIE_SECURE=false`.
+- `SameSite: Strict` is an optional deployer setting
+  (`SESSION_COOKIE_SAMESITE=strict`) for high-security environments.
+- No `__Host-` / `__Secure-` prefix in v1 (the dev-HTTP need conflicts with
+  the prefix's TLS requirement). This is a v1.1 enhancement.
+
+### CSRF protection (ADR-087)
+
+- All state-changing routes (`POST`, `PUT`, `PATCH`, `DELETE`) MUST be
+  protected via the **double-submit cookie pattern**: the backend sets a CSRF
+  token cookie (`componode_csrf`, `HttpOnly: false`, `SameSite: Lax`, `Secure`
+  matches the session cookie), and the frontend sends the token as an
+  `X-CSRF-Token` header on every state-changing request.
+- The backend's `preHandler` compares the cookie value to the header value —
+  mismatch = `403`.
+- GET routes MUST NOT have side effects (see "GET routes" below).
+- This is universal (not conditional on deployment type).
+
+### CORS configuration (ADR-088)
+
+- CORS MUST be configured with an explicit allow-list of exact origins
+  (`CORS_ALLOWED_ORIGINS` env var, comma-separated, no wildcards, no
+  patterns).
+- In dev, the Vite proxy (`server.proxy['/api'] = 'http://localhost:3000'`)
+  is the primary mechanism — the frontend calls `/api/v1/...` same-origin,
+  Vite proxies to the backend, CORS is not needed.
+- In production (same-origin via `fastify-static`), CORS is not needed for
+  the primary flow.
+- `CORS_ALLOWED_ORIGINS` defaults to empty (CORS disabled) — a deployer
+  running a separate frontend container or allowing external tools must
+  explicitly set the allow-list.
+- When non-empty: `Access-Control-Allow-Credentials: true` for allow-listed
+  origins, `Access-Control-Max-Age: 3600`, allowed methods are the route's
+  actual methods (not a wildcard `*`).
+- When empty: the CORS preHandler is a no-op (no `Access-Control-Allow-*`
+  headers set).
+
+### Security headers (ADR-089)
+
+- The backend MUST set security headers via `@fastify/helmet` (or equivalent)
+  on all HTTP responses:
+
+| Header | Value |
+|---|---|
+| `X-Content-Type-Options` | `nosniff` |
+| `X-Frame-Options` | `DENY` |
+| `Strict-Transport-Security` | `max-age=31536000` (production only, no `includeSubDomains`) |
+| `Content-Security-Policy` | `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'` |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` |
+| `Permissions-Policy` | `geolocation=(), microphone=(), camera=()` |
+
+- HSTS is set only in production (`NODE_ENV=production`), without
+  `includeSubDomains` (avoids breaking deployer's non-HTTPS subdomains).
+- CSP `style-src 'unsafe-inline'` is a documented tradeoff for Tailwind CSS +
+  shadcn/ui compatibility; nonce-based CSP is a v1.1 enhancement.
+- Both `X-Frame-Options: DENY` and CSP `frame-ancestors 'none'` are set
+  (defense in depth for legacy browsers).
+- Security headers apply to all routes including `/metrics`.
+
+### No secrets in logs (ADR-090)
+
+- Pino log statements MUST NOT include secrets, credentials, or sensitive
+  configuration.
+- The backend's Pino configuration MUST include a redaction filter that
+  strips the following field paths from log output (replaced with
+  `"[REDACTED]"`): `password`, `passwordHash`, `clientSecret`, `secretRefs`,
+  `secrets`, `secrets.*`, `sessionToken`, `sessionId`, `authorization`,
+  `cookie`, `oidcSubject`, `email`, `importer_configs.secretRefs`,
+  `importer_configs.scope`.
+- Importers receive an abstracted `Logger` (ADR-067) pre-configured with the
+  same redaction.
+- When logging an importer's configuration, log only safe metadata
+  (`importerName`, `configId`, `label`, `schedule`), never the full
+  `importer_configs` row.
+- When logging a request, log headers selectively (`content-type`,
+  `user-agent`, `x-request-id`), never the full headers object.
+- Stack traces are logged as-is (sanitizing stack traces is over-engineering
+  for v1; the risk of embedded credentials in URLs is mitigated by the
+  redaction filter catching `secrets.*`). This is a known tradeoff documented
+  here.
+
+### No secrets in commits (ADR-091)
+
+- Secrets, credentials, API keys, private keys, and `.env` files MUST NOT be
+  committed to the repository.
+- The `.gitignore` MUST include `.env`, `.env.*`, `*.pem`, `*.key`, `*.p12`,
+  and `secrets/`.
+- CI MUST run a secret scanner on every PR — this is the enforceable
+  boundary.
+- A pre-commit hook (via `husky`) is a SHOULD (best-effort contributor
+  feedback, bypassable with `--no-verify`).
+- The example `docker-compose.yml` MUST use
+  `${BOOTSTRAP_ADMIN_PASSWORD:?must set}` and `env_file: .env` for
+  secret-bearing services, never inline `environment:` blocks with secret
+  values.
+- Example `.env.example` files (committed; `.env` is gitignored) MUST use
+  placeholder values (`BOOTSTRAP_ADMIN_PASSWORD=changeme`), never
+  real-looking values.
+- Test fixtures with credentials MUST use clearly fake values
+  (`test:test`, `postgres:postgres`) and the secret scanner's config MUST
+  allow-list test fixture paths (`packages/backend/test/**`).
+- If a secret is accidentally committed: the commit MUST be reverted
+  (force-push to rewrite history if the secret is sensitive — this is the
+  exception to the "no force-push" git rule), the secret rotated, and the
+  incident documented in a post-mortem.
+
+### Dependency scanning (ADR-092)
+
+- CI MUST run a dependency vulnerability scanner on every PR.
+- A PR that introduces a vulnerability with severity `high` or `critical`
+  MUST be blocked (CI fails), unless the vulnerability is in a dev-only
+  dependency that does not ship to production AND the PR includes a
+  `// SECURITY:` comment documenting why it's not exploitable.
+- Vulnerabilities of `moderate` or `low` severity are reported as warnings
+  (CI passes, but the report is visible on the PR).
+- Dependencies MUST be pinned to exact versions in `package.json` (no `^` or
+  `~` ranges). Version bumps are done via `changesets` or a dedicated PR.
+- Newly published versions (less than 7 days old) MUST NOT be used — wait
+  for vetting. This extends the existing AGENTS.md rule (which covers new
+  deps) to version bumps of existing deps.
+
+### TLS / HTTPS for production (ADR-093)
+
+- Production deployments MUST use HTTPS. Componode does not terminate TLS
+  itself — TLS is terminated by the deployer's reverse proxy (nginx, Caddy,
+  Traefik, or a cloud load balancer) in front of the Componode container.
+- The backend MUST set `Strict-Transport-Security` in production (ADR-089)
+  and MUST configure `trustProxy` to the proxy's IP (via `TRUSTED_PROXY_IP`
+  env var, not `true`) to correctly trust `X-Forwarded-Proto`/
+  `X-Forwarded-Host` headers without allowing client spoofing.
+- `docs/deployment.md` MUST document TLS setup for at least two reverse
+  proxy options (Caddy for automatic Let's Encrypt, nginx for manual/explicit
+  config).
+- The example `docker-compose.yml` MUST include a commented-out Caddy
+  service as the recommended quick-start, with a note pointing to
+  `docs/deployment.md` for nginx/Traefik alternatives.
+- Dev runs over HTTP (`localhost`) — no TLS required in dev. HTTPS in dev
+  (via mkcert) is an optional contributor convenience, not mandated.
+
+### GET routes must not have side effects (ADR-094)
+
+- `GET` and `HEAD` routes MUST be idempotent and side-effect-free with
+  respect to domain state. They MUST NOT mutate domain entities (components,
+  products, instances, edges, importer configs, runs), trigger importer
+  runs, modify sessions (other than `lastSeenAt` operational bookkeeping per
+  ADR-043), or perform any action that changes persistent domain state.
+- Any state-changing operation MUST use `POST`, `PUT`, `PATCH`, or `DELETE`
+  with CSRF protection (ADR-087).
+- Operational bookkeeping (`sessions.lastSeenAt` write-throttled updates,
+  `import_runs.lastPolledAt` if added) is permitted on GET routes — these
+  are observability/operational side effects, not domain state changes, and
+  are not CSRF-exploitable.
+- Read-access auditing (logging "user X viewed component Y" to
+  `entity_changes`) is NOT performed on GET routes in v1 — ADR-052's
+  `entity_changes` logs consequential state changes and human edits, not
+  read access. If read-access auditing is added in a future spec, it MUST be
+  performed by an asynchronous middleware decoupled from the GET route's
+  response path, and the spec MUST document the CSRF implications.
+
+### Input validation (ADR-095)
+
+- All API request inputs (path params, query params, request bodies) MUST be
+  validated at the route boundary using Zod schemas.
+- A request that fails validation receives `400` with
+  `{code: "VALIDATION_FAILED", message, details: [{field, issue}]}` (ADR-071).
+- Unknown fields in request bodies are rejected (Zod `.strict()`), not
+  silently dropped.
+- String inputs have max-length constraints: default 255 for names/labels,
+  100 for slugs, 2000 for descriptions, 100 for `resourceType`. A spec may
+  override these defaults with a documented justification.
+- Enum inputs are validated against the `core` constants (ADR-079).
+- Validation schemas shared between backend and frontend (e.g.
+  `DigitalProduct` create/update, `ComponentGroup` create/update) live in
+  `packages/core`. Backend-only schemas (e.g. importer config creation,
+  admin-only endpoints) live in `packages/backend/src/routes/schemas/`.
+- The Fastify server MUST enforce a max request body size (`bodyLimit: 1MB`
+  default, configurable via `MAX_REQUEST_BODY_SIZE` env var). Requests
+  exceeding the limit receive `413 Payload Too Large`.
+
+### Error responses must not leak internals (ADR-096)
+
+- Error responses MUST use the `{code, message, details?}` format (ADR-071)
+  with controlled `code` enums from `packages/core`.
+- Error `message` and `details` MUST NOT include: stack traces, internal
+  file paths, SQL query text, raw database error messages, environment
+  variable names, or internal service names.
+- Stack traces are logged server-side via Pino (ADR-090) but never sent to
+  the client.
+- Database errors are caught at the service layer and translated into
+  controlled error codes:
+
+| Postgres SQLSTATE | HTTP | `code` |
+|---|---|---|
+| `23505` (unique violation) | `409` | `DUPLICATE_SLUG` / `DUPLICATE_KEY` |
+| `23514` (CHECK violation) | `400` | `VALIDATION_FAILED` |
+| `23503` (FK violation) | `409` | `REFERENTIAL_INTEGRITY` |
+| `40P01` (deadlock) | `409` | `CONFLICT_RETRY` |
+| Cycle-detection exception (ADR-050) | `409` | `CYCLE_DETECTED` (with `details: {cycle: [productId, ...]}`) |
+
+- In dev, error responses MAY include a `debug` field with the original
+  error message, gated by an explicit `DEBUG_ERROR_DETAILS=true` env var
+  (not `NODE_ENV` — avoids misconfiguration leaks).
+- The `debug` field is never populated for auth-related error codes
+  (`AUTH_INVALID_CREDENTIALS`, `AUTH_RATE_LIMITED`, `AUTH_SESSION_EXPIRED`,
+  `AUTH_FORBIDDEN`, `OIDC_CALLBACK_FAILED`).
+
+### Rate limiting (ADR-097)
+
+- The backend MUST enforce rate limits via a rate-limiting Fastify plugin
+  with an in-memory store for v1 (single-instance per ADR-065).
+  Multi-instance deployments (post-v1) require a shared store (Redis) —
+  documented as a known v1 limitation.
+
+| Endpoint category | Limit | Keyed by | Window | On exceed |
+|---|---|---|---|---|
+| Login (`POST /api/v1/auth/login`) | 5 | username or source IP | 1 min | `429` `AUTH_RATE_LIMITED` + `Retry-After` |
+| OIDC callback (`POST /api/v1/auth/oidc/callback`) | 5 | source IP | 1 min | `429` `AUTH_RATE_LIMITED` + `Retry-After` |
+| Registration (`POST /api/v1/auth/register`, if enabled) | 3 | source IP | 1 min | `429` `AUTH_RATE_LIMITED` + `Retry-After` |
+| Importer trigger (`POST /api/v1/importers/:configId/trigger`) | 10 | user (session ID) | 1 min | `429` `RATE_LIMITED` + `Retry-After` |
+| General API (`/api/v1/*`, authenticated) | 300 | user (session ID) | 1 min | `429` `RATE_LIMITED` + `Retry-After` |
+| `/metrics` | Unlimited | — | — | — |
+
+- Rate limit responses include a `Retry-After` header (seconds until reset).
+- The general API limit is per-user (session ID), not per-IP (corporate NAT
+  safety).
+- All `/api/v1/*` routes are authenticated (Viewer minimum per ADR-054) —
+  no unauthenticated API routes except `/metrics`.
+
+### Importer sandboxing (ADR-098)
+
+- Importers are untrusted code that executes within the backend's process.
+  The following constraints MUST be enforced via ESLint
+  `no-restricted-imports` and `no-restricted-syntax` rules in importer
+  packages' ESLint configs (static, CI-enforceable):
+  1. **Filesystem**: `fs`, `fs/promises`, `fs-extra` imports are PROHIBITED.
+  2. **Environment variables**: `process.env` access is PROHIBITED. SDKs
+     that default to `process.env` (e.g. `@aws-sdk`) MUST be configured with
+     explicit values from the `secrets`/`config` parameters.
+  3. **Child processes**: `child_process`, `execa`, `shelljs` imports are
+     PROHIBITED.
+  4. **Dynamic code**: `eval`, `new Function`, `vm` module, `import()`
+     expressions are PROHIBITED via `no-restricted-syntax`.
+  5. **Permitted**: `fetch`/HTTP clients (outbound API calls),
+     `Logger`/`Tracer` from `core`, `validateDiscoveredAsset` from `core`,
+     the importer's own package files.
+- True process-level sandboxing (worker threads, separate containers) is a
+  post-v1 enhancement. The ESLint rules are static enforcement that prevents
+  accidental leakage and catches malicious PRs at the CI boundary — they do
+  not protect against a determined attacker who bypasses ESLint and passes
+  review.
+
+### Secure password and credential handling (ADR-099)
+
+- **Password hashing (ADR-044)**: Argon2id via `@node-rs/argon2`, PHC format.
+  Parameters configurable via env vars (`ARGON2_MEMORY_COST`,
+  `ARGON2_TIME_COST`, `ARGON2_PARALLELISM`) with OWASP defaults (19 MiB
+  memory, 2 iterations, 1 parallelism lane).
+- **Password complexity**: Minimum 12 characters, no maximum, no complexity
+  rules (NIST SP 800-63B — length over complexity). Rejected with `400
+  {code: "WEAK_PASSWORD"}`.
+- **Password reset**: Admin-triggered, via secure reset token (32 bytes,
+  base64url). Token stored as SHA-256 hash in `password_reset_tokens` table.
+  Expires after 15 minutes. Single-use. The Admin never knows the new
+  password. Email delivery is post-v1; in v1 the token is displayed to the
+  Admin who communicates it out-of-band.
+- **OIDC client secret**: Stored as `clientSecretRef` (ADR-073), resolved via
+  `SecretResolver`, held in memory only for the OIDC token exchange.
+- **Importer secrets**: Resolved secrets held in memory only for the run
+  duration, not cached/persisted/logged, dereferenced after run completion.
+- **Bootstrap admin password**: Read once on empty-DB boot, hashed
+  immediately, plaintext not retained.
+- **Timing attacks**: Login hashes a dummy password for non-existent users
+  to equalize response time. Prevents user enumeration via timing.
+- **Session token generation**: Session IDs are cryptographically random
+  (32 bytes, base64url), NOT UUID v7. The `sessions.id` is a random token,
+  not a time-sortable UUID. This is an exception to ADR-045's "UUID v7 for
+  all entities" — session tokens are credentials, not entity identifiers,
+  and require cryptographic randomness.
+
+### Audit log integrity (ADR-100)
+
+- Audit log tables (`entity_changes`, `edge_changes`, `import_run_errors`)
+  are **append-only**. The backend MUST NOT expose `UPDATE` or `DELETE`
+  operations on these tables via any API endpoint, service method, or CLI
+  command.
+- Database-level enforcement: a `BEFORE UPDATE OR DELETE` trigger on all
+  three tables raises an exception unconditionally.
+- No role — including Admin — can modify or delete audit entries.
+  Corrections are new entries (`entity_changes` with `action: CORRECTION`,
+  referencing the original entry's ID), not edits.
+- `import_runs` is NOT append-only (status transitions, asset counts, and
+  error fields are legitimately updated during and after the run). However,
+  `import_runs.createdAt` is immutable after creation, and the entire row is
+  immutable after reaching a terminal state (`COMPLETED`/`FAILED`/
+  `CANCELLED`/`INTERRUPTED`) — a `BEFORE UPDATE` trigger enforces this by
+  checking `OLD.status` against the terminal set.
+- Operator notes on a run ("caused by AWS outage") are added as
+  `entity_changes` entries, not mutations on `import_runs`.
+- **GDPR interaction**: `entity_changes.createdBy`/`updatedBy` are nullable
+  FKs to `persons` with `ON DELETE SET NULL`. When a `Person` is
+  hard-deleted (ADR-047), the audit entries' `createdBy`/`updatedBy` are set
+  to `NULL`, preserving the audit trail without retaining the person's
+  identity. A denormalized `createdByName`/`updatedByName` snapshot
+  (captured at write time) retains the name for historical context — this is
+  a deliberate tradeoff (audit integrity vs. right-to-be-forgotten).
+- **Retention policy**: No automatic retention policy in v1 (audit entries
+  retained indefinitely). A v1.1 feature may add configurable retention with
+  archival.
+
+### Database connection security (ADR-101)
+
+- **TLS to Postgres**: `DATABASE_SSL_MODE` env var controls the SSL mode.
+  Default: `require` in production, `disable` in dev. For remote Postgres
+  (RDS, Cloud SQL), the deployer SHOULD set `DATABASE_SSL_MODE=verify-full`
+  and configure `DATABASE_SSL_CA` (path to CA cert).
+- **Connection pool limits**: `MAX_DB_CONNECTIONS` env var (default 10). The
+  example `docker-compose.yml` documents the pool budget calculation:
+  `MAX_DB_CONNECTIONS (10) × backend instances (1 in v1) +
+  IMPORTER_MAX_CONCURRENCY (3) + reserved (5) = 18 < Postgres
+  max_connections (100)`.
+- **Credential rotation**: `DATABASE_URL` from env var. Rotation = update
+  env var + restart. No in-app rotation in v1.
+- **Least-privilege DB user**: The example `docker-compose.yml` MUST include
+  an `init-db.sql` script (mounted into the Postgres container's
+  `docker-entrypoint-initdb.d/`) that creates a `componode` user with
+  `CONNECT` on the `componode` database + full DML/DDL on the `public`
+  schema. The application connects with this user (not the Postgres
+  superuser).
+- **Migration privileges**: v1 uses a single `componode` user with DDL+DML.
+  A split (`MIGRATION_DATABASE_URL` for DDL, `DATABASE_URL` for DML-only) is
+  a v1.1 enhancement.
+- **Driver**: The spec (001-foundation) chooses the Postgres driver — this
+  rule does not mandate a specific driver, but the chosen driver MUST
+  support TLS, prepared statements, and configurable pool limits.
+
+### Content injection in JSONB fields (ADR-102)
+
+- Importer-yielded JSONB fields (`Component.details`,
+  `ComponentInstance.rawConfig`, and any future free-form JSON fields)
+  contain arbitrary untrusted data.
+- **Frontend rendering**: JSONB fields MUST be rendered as structured data —
+  individual values rendered as text in React components (React's default
+  escaping applies), or as a JSON tree via a component that renders values
+  as text (not HTML). The frontend MUST NOT pass JSONB field values through
+  `dangerouslySetInnerHTML` (ADR-085), `eval()`, or any HTML/string
+  interpretation function.
+- **URLs in JSONB**: URLs found within JSONB fields (at any nesting depth)
+  MUST be sanitized via the `safeUrl()` utility (ADR-085) before rendering
+  as `href` attributes. JSON tree components used in the frontend MUST NOT
+  auto-link URLs (or MUST sanitize via `safeUrl()` if they do).
+- **Markdown / rich text**: Rendering JSONB fields as markdown or rich text
+  is PROHIBITED in v1. If a future spec requires markdown rendering, it MUST
+  use a sanitizing renderer (`react-markdown` + `rehype-sanitize` with an
+  allow-listed tag/attribute set), and the raw markdown MUST be stored in a
+  dedicated field (not a free-form `details` JSONB) to clearly mark it as
+  rich-text content requiring sanitization.
+- **Backend error responses**: If a validation error includes a JSONB field
+  value in the `details` of a `400` response, the value is rendered as text
+  by the frontend's error display (React escapes). This is safe. The
+  backend MUST NOT include JSONB values in error `message` strings.
+- **Backend SQL**: JSONB fields are stored and queried via Kysely's JSONB
+  operators, never via string interpolation (ADR-084).
+
+---
+
 ## Spec-Driven Development Workflow
 
 This project uses **spec-kit v0.12.11** for structured feature development.
@@ -524,6 +934,6 @@ Dependencies: 001 first → 002 → 003 + 004 (overlap) → 005 + 006.
 
 | Document | Role |
 |---|---|
-| `researches/architecture-decisions.md` | **83 ADRs from the grilling sessions — read before any implementation** |
+| `researches/architecture-decisions.md` | **102 ADRs from the grilling sessions — read before any implementation** |
 | `researches/component_taxonomy_research.md` | **Industry survey grounding the 24-category taxonomy** |
 | `.specify/memory/constitution.md` | **7 constitution principles governing all specs — read before any spec** |
