@@ -4,7 +4,7 @@
 
 **Created**: 2026-08-16
 
-**Status**: Draft
+**Status**: Complete
 
 **Input**: User description: "001-foundation — the irreducible core: shared contracts (DiscoveredAsset, Importer interface, entity types), database schema (24 tables per ADR-077, see data-model.md for count reconciliation), migrations, backend skeleton (Fastify, Kysely, auth middleware, error handling, session storage, RBAC enforcement, bootstrap admin, local auth, optional OIDC), and an empty dashboard frontend. Milestone: deploy Componode, log in, see an empty dashboard."
 
@@ -289,9 +289,9 @@ metrics are present.
 - **FR-009**: System MUST support optional OIDC integration with JIT
   provisioning (first login creates account with Viewer role) and
   claim-based role mapping with local admin override.
-- **FR-010**: System MUST rate-limit login attempts (5 per username or
-  source IP per minute) and return a 429 with a Retry-After header on
-  exceedance.
+- **FR-010**: System MUST rate-limit login attempts (5 per username per
+  minute AND 5 per source IP per minute, whichever triggers first) and
+  return a 429 with a Retry-After header on exceedance.
 - **FR-011**: System MUST enforce CSRF protection on all state-changing
   routes (POST/PUT/PATCH/DELETE) via the double-submit cookie pattern.
 - **FR-012**: System MUST set security headers on all HTTP responses:

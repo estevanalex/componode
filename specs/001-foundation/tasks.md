@@ -303,7 +303,7 @@
 
 **Purpose**: Accessibility audit, Docker Compose finalization, documentation, final validation
 
-- [x] T161 [P] Audit all frontend pages for WCAG 2.1 Level AA conformance in `packages/frontend/src/pages/` — verify keyboard navigation on every interactive element, form labels, color contrast 4.5:1, focus indicators, ARIA attributes per FR-026/SC-012
+- [x] T161 [P] Audit all frontend pages for WCAG 2.1 Level AA conformance in `packages/frontend/src/pages/` — verify keyboard navigation on every interactive element, form labels, color contrast 4.5:1, focus indicators, ARIA attributes per FR-026/SC-012. **Note**: Screen reader test (NVDA or VoiceOver) on login, dashboard, and settings pages is a manual post-launch validation step per SC-012 — document results in 006-deployment-and-docs.
 - [x] T162 [P] Add shadcn/ui Toaster component via `npx shadcn@latest add sonner` to `packages/frontend/src/components/ui/sonner.tsx` for error/success notifications
 - [x] T163 Finalize `docker-compose.yml` — app service builds backend + frontend (multi-stage Dockerfile: build frontend with Vite, copy dist to backend static dir), env vars wired, depends_on postgres, healthcheck
 - [x] T164 [P] Create `Dockerfile` in repo root (multi-stage: Stage 1 build frontend with Vite, Stage 2 build backend with tsc, Stage 3 runtime: copy backend dist + frontend dist, run `node dist/server.js`)

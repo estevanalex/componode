@@ -154,7 +154,7 @@ packages/
 │   │   │   ├── migrations/        # Kysely migrations (ADR-078)
 │   │   │   │   ├── 001_initial_schema.ts   # All 24 tables
 │   │   │   │   ├── 002_append_only_triggers.ts
-│   │   │   │   └── 002_terminal_state_triggers.ts
+│   │   │   │   └── 003_terminal_state_triggers.ts
 │   │   │   ├── connection.ts      # Kysely instance, pool config (ADR-101)
 │   │   │   ├── types.ts           # Kysely DB type (generated from schema)
 │   │   │   └── check-constraint-helper.ts  # CHECK from core constants
@@ -170,7 +170,6 @@ packages/
 │   │   │   ├── metrics.ts         # Prometheus metrics (ADR-069)
 │   │   │   └── tracing.ts         # OpenTelemetry tracing (ADR-068)
 │   │   ├── routes/
-│   │   │   ├── schemas/           # Backend-only Zod schemas (ADR-095)
 │   │   │   ├── auth.ts            # Login, logout, register, password reset
 │   │   │   ├── users.ts           # User CRUD, role management
 │   │   │   ├── sessions.ts        # Session list, revoke
@@ -185,8 +184,6 @@ packages/
 │   │   │   ├── settings-service.ts # App settings read/write
 │   │   │   ├── password-reset-service.ts
 │   │   │   └── bootstrap-service.ts # First-boot admin creation
-│   │   ├── middleware/
-│   │   │   └── trust-proxy.ts     # trustProxy config (ADR-093)
 │   │   ├── utils/
 │   │   │   ├── crypto.ts          # 32-byte random token generation
 │   │   │   ├── argon2.ts          # Argon2id hash/verify wrapper
