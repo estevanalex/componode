@@ -1,50 +1,222 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+# Componode Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Single-Organization, Self-Hosted
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+Componode is a self-hosted, single-organization tool. One deployment = one
+org/team. No multi-tenancy, no `Organization`/tenant layer, no
+tenant-isolation-in-every-query. A hosted SaaS offering is a future open-core
+possibility, not v1. Any spec that introduces tenant-scoping, per-tenant data
+isolation, or multi-org partitioning violates this principle.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+- **Forbids**: `Organization` entity, tenant columns on any table, per-tenant
+  rate limits, per-tenant auth, "switch org" UI.
+- **Permits**: RBAC (roles are org-global), OIDC (one IdP per deployment),
+  multiple importer configs (one deployer's configs, not per-tenant).
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### II. Importer-First
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+The headline value of Componode is importing assets from external sources
+(GitHub, AWS, Azure, Kubernetes, web/API/MCP). Importers are pull-only
+`AsyncGenerator<DiscoveredAsset>` — they yield normalized assets and never
+touch the database. The core owns upsert, dedup, reconciliation, run history,
+and lifecycle. Importers depend only on `packages/core`; they MUST NOT import
+from `packages/backend` or each other. Any spec that has an importer write to
+the DB, depend on backend internals, or push to external systems violates this
+principle.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+- **Forbids**: Importers writing SQL, importing `@componode/backend`, calling
+  DB services, pushing to external APIs (webhooks, writes), depending on other
+  importers.
+- **Permits**: Importers reading from external APIs (pull), yielding
+  `DiscoveredAsset` records, using `core`'s `Logger`/`Tracer`/
+  `validateDiscoveredAsset`, declaring config schemas, the core resolving
+  secrets and passing them to importers.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### III. Two-Level Taxonomy
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+Components are classified by a controlled `category` enum (24 values) + a
+controlled `provider` enum (with `OTHER` escape hatch) + a free-form
+`resourceType` string carrying the provider-native type. A flat single-enum
+classification is prohibited. New categories or providers require updating the
+taxonomy research, the enum constants in `packages/core`, and the DB CHECK
+constraints — not just adding a value. The `CONTAINER`/
+`CONTAINER_ORCHESTRATION` split is intentional (workload vs. scope) and must
+not be conflated.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+- **Forbids**: Flat single-enum classification, adding categories/providers
+  without the three-way update (research + `core` + migration), conflating
+  `CONTAINER`/`CONTAINER_ORCHESTRATION`, removing the `OTHER` escape hatch on
+  `provider`.
+- **Permits**: Adding categories/providers via the documented process (research
+  update → `core` constant → migration altering CHECK constraint), importers
+  using `OTHER` for providers not yet in the enum, free-form `resourceType`
+  values per importer.
+
+### IV. Environment-as-Instance
+
+When a single source asset has multiple environment-specific deployments (e.g.
+one API Gateway with dev/staging/prod Stages), it is modeled as ONE `Component`
+with multiple `ComponentInstance` records — never as an `environment` field on
+`Component`. When multiple distinct source assets (e.g. three EC2 instances in
+three accounts) are *considered* the same logical component by a human, they
+are modeled as separate `Component` rows grouped under a `ComponentGroup` (a
+first-class entity with its own name, slug, description, and owner).
+`Component.lifecycle` (`ACTIVE`/`RETIRED`) is the logical lifecycle;
+`ComponentInstance.status` (`RUNNING`/`STOPPED`/`ERROR`/`GONE`) is the
+operational state. These must never be conflated. Any spec that adds an
+`environment` field on `Component`, duplicates a component per environment
+within a single source asset, or merges lifecycle and operational state
+violates this principle.
+
+- **Forbids**: `environment` column on `components`, duplicating components per
+  env within a single source asset, conflating `lifecycle` and `status`,
+  expanding the two-state lifecycle into a richer state machine without a spec
+  decision.
+- **Permits**: Multiple `ComponentInstance` rows per `Component`, env-specific
+  `url`/`region`/`version`/`status` on instances, the `OTHER` environment for
+  importers that can't determine env, default queries excluding `RETIRED`
+  components and `GONE` instances, `ComponentGroup` for human-declared
+  equivalence across distinct source assets.
+
+### V. Factual vs. Meaning Layer
+
+Importers populate the factual layer (components, instances, environments,
+operational state) — what *exists*. Humans curate the meaning layer (digital
+products, composition, consumption, ownership, platform promotion) — what it
+*means*. The importer contract does not include product-hierarchy edges;
+`DiscoveredAsset.relationships[]` is not part of the v1 contract. Any spec
+that has importers declaring `COMPOSES`/`CONSUMES_FROM`/`OWNS` edges, or that
+removes human curation from the product hierarchy, violates this principle.
+Importer-declared candidate edges are a v2 feature (staged as candidates,
+human-confirmed).
+
+- **Forbids**: Importers yielding `COMPOSES`/`CONSUMES_FROM`/`OWNS`/
+  `BELONGS_TO` edges, specs that auto-derive product hierarchy from importer
+  data, removing the human authoring step from the hierarchy UI.
+- **Permits**: Importers yielding `DEPENDS_ON`/`SOURCES_FROM`/`EXPOSES`
+  component-to-component edges (reserved for v2 per ADR-030, but the principle
+  doesn't forbid the *concept* — it forbids importer-declared *product* edges
+  in v1), humans authoring all product-level edges, the Platform Product
+  workflow (ADR-017) as a human-guided action.
+
+### VI. Test-First (NON-NEGOTIABLE)
+
+Tests are written before implementation. The cycle is: write a failing test →
+user approves the test → confirm it fails → implement until it passes →
+refactor. The importer harness (`validateDiscoveredAsset` in `packages/core`)
+is the enforceable contract — an importer that yields a malformed
+`DiscoveredAsset` fails its tests and is rejected at runtime. Integration
+tests (testcontainers Postgres) cover the core
+upsert/dedup/reconciliation/edge-rewrite/hierarchy path. Any spec that ships
+code without tests, or that bypasses the importer harness, violates this
+principle.
+
+- **Forbids**: Shipping implementation without tests, bypassing
+  `validateDiscoveredAsset` in importer packages, skipping the harness in
+  importer unit tests, merging PRs without integration tests for core-path
+  changes.
+- **Permits**: Unit tests for pure logic, the shared harness for importer
+  contract validation, integration tests with testcontainers for DB-touching
+  code, deferring E2E tests to post-v1 (per ADR-029).
+
+### VII. Observability from Day One
+
+Componode is instrumented for observability before features are built on top of
+it. Pino structured logging (every request, importer run, auth event),
+Prometheus metrics (`/metrics` endpoint with importer/HTTP/DB/auth metrics),
+and OpenTelemetry tracing (importer runs → DB query spans) are present in the
+foundation, not retrofitted. Importers receive a `Logger` and optional `Tracer`
+via their run context; they do not import observability libraries directly.
+Any spec that adds a runtime code path without structured logging, or that
+defers instrumentation to "after the feature works," violates this principle.
+
+- **Forbids**: `console.log` in production code paths, deferring
+  logging/metrics/tracing to a later phase, importers importing `pino` or
+  `@opentelemetry/api` directly (they use the `core` interfaces per ADR-067/
+  ADR-068), uninstrumented importer runs.
+- **Permits**: The abstracted `Logger`/`Tracer` interfaces in `core`, the
+  `/metrics` endpoint being unauthenticated but network-policy-restricted, the
+  run-level span as the baseline (importer child spans are opt-in).
+
+## Additional Constraints
+
+### Technology Stack (binding)
+
+| Layer | Technology |
+|---|---|
+| Backend API | TypeScript 5, Fastify, Kysely (query builder) |
+| Frontend | React 18, Vite, TanStack Query, React Router, Tailwind CSS, shadcn/ui |
+| Database | PostgreSQL (CHECK constraints from `core` constants; no native ENUMs) |
+| Migrations | Kysely built-in migration system (TS, schema-builder) |
+| Monorepo | pnpm workspaces + Turborepo |
+| Importer framework | In-tree packages, pull-only `AsyncGenerator<DiscoveredAsset>` |
+| Auth | Built-in local (Argon2id via `@node-rs/argon2`, server-side sessions) + optional OIDC |
+| Observability | Pino (logging) + Prometheus (metrics) + OpenTelemetry (tracing) |
+| Deployment | Docker Compose (one container: backend serves frontend static) |
+| CI/CD | GitHub Actions + changesets |
+| License | Apache 2.0 |
+| Identifiers | UUID v7 (native Postgres `uuid`); `slug` for human-readable refs |
+
+### Spec-Driven Development Workflow
+
+This project uses **spec-kit v0.12.11** for structured feature development.
+The workflow is command-driven via spec-kit skills.
+
+1. **`/speckit-constitution`** — Establish project principles (run once, first).
+2. **`/speckit-specify`** — Create a feature branch and write `spec.md`.
+3. **`/speckit-clarify`** (optional) — Resolve ambiguity via up to 5 questions.
+4. **`/speckit-plan`** — Produce `plan.md`, `research.md`, `data-model.md`,
+   `contracts/`, `quickstart.md`.
+5. **`/speckit-tasks`** — Generate `tasks.md` organized by user story.
+6. **`/speckit-implement`** — Execute tasks phase-by-phase.
+7. **`/speckit-checklist`** — Generate requirements-quality checklists.
+8. **`/speckit-analyze`** — Read-only cross-artifact consistency check.
+9. **`/speckit-converge`** — Assess codebase vs spec, append remaining work.
+
+### v1 Feature Breakdown
+
+v1 is split into 6 spec-kit features with an explicit dependency graph:
+
+1. **`001-foundation`** — `packages/core` contracts + DB schema + migrations +
+   backend skeleton (Fastify, Kysely, auth middleware, error handling, session
+   storage, RBAC enforcement, bootstrap admin, local auth, OIDC). Milestone:
+   "deploy Componode, log in, see an empty dashboard."
+2. **`002-importer-framework`** — run service, scheduler, registry,
+   reconciliation, cancellation, observability for runs. Milestone: "configure
+   an importer and run it."
+3. **`003-component-catalog`** — component/instance services + UI (listing,
+   filtering, grouping via `ComponentGroup`), the 7 v1 importers. Milestone:
+   "dashboard shows real components."
+4. **`004-product-hierarchy`** — products, edges, ownership, Platform Product
+   workflow, hierarchy UI. Milestone: "model my products." (Overlaps with 003
+   after 001+002.)
+5. **`005-audit-and-settings`** — audit tables, settings, admin UI.
+6. **`006-deployment-and-docs`** — Docker Compose, docs, CI, changesets.
+
+Dependencies: 001 first → 002 → 003 + 004 (overlap) → 005 + 006.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+The Constitution supersedes all other practices. Amendments require
+documentation, approval, and a migration plan. All PRs/reviews must verify
+compliance with the seven principles. Complexity must be justified against the
+principles (especially II, V, and VI). Use `researches/architecture-decisions.md`
+for runtime development guidance and ADR history.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+### v1.1 Roadmap (deferred from v1, queued for the next cycle)
+
+- RFC 7807 wrapping for error responses (ADR-052).
+- Range/OR filters on list endpoints (ADR-063).
+- Invite-based registration (ADR-056).
+- Runtime-loaded importer plugins (ADR-026).
+- E2E tests (ADR-029).
+- Per-env blast-radius traversal (ADR-015, Phase 4+).
+- Kubernetes/Helm packaging (ADR-028, community-contributed).
+- Generated docs site (ADR-030, post-v1).
+- Remaining providers (GitLab, Bitbucket, Azure DevOps, Alibaba Cloud,
+  Cloudflare, OpenShift, Docker/Podman) — contributor-welcome issues.
+- Importer-declared candidate product edges (v2: staged, human-confirmed).
+
+**Version**: 1.0.0 | **Ratified**: 2026-08-16 | **Last Amended**: 2026-08-16
