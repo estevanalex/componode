@@ -269,7 +269,7 @@ Component {category, provider, resourceType, lifecycle, ...}  // logical, env-ag
         environment: enum[DEV, TEST, STAGING, DEMO, PRODUCTION, OTHER],
         url: string,
         region: string,
-        status: enum[RUNNING, STOPPED, ERROR, ...],
+        status: enum[RUNNING, STOPPED, ERROR, GONE, ...],
         version: string,
         deployedAt: datetime,
         rawConfig: json
@@ -285,8 +285,15 @@ carry its own URL/status/version.
 
 **Lifecycle vs operational state**: `Component.lifecycle` (`ACTIVE`/`RETIRED`)
 on the logical component (is this still in scope); `ComponentInstance.status`
-(`RUNNING`/`STOPPED`/`ERROR`) on the instance (is this currently running).
-These must not be conflated.
+(`RUNNING`/`STOPPED`/`ERROR`/`GONE`) on the instance (is this currently
+running). These must not be conflated.
+
+> **CORRECTION (Session 2, ADR-082)**: This ADR covers Case A only (single
+> source asset with multiple environment-specific deployments → one
+> `Component` with multiple `ComponentInstance` records). Case B (multiple
+> distinct source assets considered the same logical component by a human) is
+> handled via `ComponentGroup` — see ADR-082. The `GONE` status value was
+> added by ADR-035 for orphaned instances.
 
 ---
 
