@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+.turbo/
+*.tsbuildinfo
+
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Python (spec-kit)
+__pycache__/
+*.pyc
+.venv/
+
+# Devin agent (may contain credentials — see spec-kit init warning)
+# Uncomment if you want to exclude .devin/ from git:
+# .devin/credentials/
