@@ -239,6 +239,7 @@
 - [x] T136 [US3] Create OIDC callback page in `packages/frontend/src/pages/oidc-callback.tsx` (handles redirect from IdP, shows loading state, redirects to dashboard on success)
 - [x] T137 [US3] Create API hooks for settings in `packages/frontend/src/api/hooks/settings.ts` (useSettings, useUpdateSettings, useOidcConfig, useUpdateOidcConfig TanStack Query hooks)
 - [x] T138 [US3] Add settings route to `packages/frontend/src/routes.tsx` (protected, admin-only)
+- [x] T214 [P] [US3] Write integration test for settings CRUD in `packages/backend/test/integration/settings.test.ts` — admin GET /settings → 200 + settings object; admin PATCH /settings → 200 + updated settings; non-admin GET /settings → 403; admin GET /settings/oidc → 200 + oidc config; admin PUT /settings/oidc with valid config → 200; admin PUT /settings/oidc with enabled=true but empty issuer → 422; invalid timeout < 60000 → 422 per contracts/settings-api.md
 
 **Checkpoint**: User Stories 1, 2, AND 3 all work independently. OIDC authentication is configurable and functional.
 

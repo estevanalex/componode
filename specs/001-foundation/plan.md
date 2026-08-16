@@ -29,7 +29,7 @@ milestone is: deploy Componode, log in, see an empty dashboard.
   per ADR-077 — resolved in research.md)
 - Monorepo: pnpm workspaces + Turborepo
 
-**Storage**: PostgreSQL 14+ (28 tables per ADR-077, Kysely migrations,
+**Storage**: PostgreSQL 14+ (24 tables per ADR-077, Kysely migrations,
 CHECK constraints from `core` constants, append-only triggers on audit
 tables)
 
@@ -152,7 +152,7 @@ packages/
 │   ├── src/
 │   │   ├── db/
 │   │   │   ├── migrations/        # Kysely migrations (ADR-078)
-│   │   │   │   ├── 001_initial_schema.ts   # All 28 tables
+│   │   │   │   ├── 001_initial_schema.ts   # All 24 tables
 │   │   │   │   ├── 002_append_only_triggers.ts
 │   │   │   │   └── 002_terminal_state_triggers.ts
 │   │   │   ├── connection.ts      # Kysely instance, pool config (ADR-101)

@@ -6,7 +6,7 @@
 
 **Status**: Draft
 
-**Input**: User description: "001-foundation — the irreducible core: shared contracts (DiscoveredAsset, Importer interface, entity types), database schema (28 tables per ADR-077), migrations, backend skeleton (Fastify, Kysely, auth middleware, error handling, session storage, RBAC enforcement, bootstrap admin, local auth, optional OIDC), and an empty dashboard frontend. Milestone: deploy Componode, log in, see an empty dashboard."
+**Input**: User description: "001-foundation — the irreducible core: shared contracts (DiscoveredAsset, Importer interface, entity types), database schema (24 tables per ADR-077, see data-model.md for count reconciliation), migrations, backend skeleton (Fastify, Kysely, auth middleware, error handling, session storage, RBAC enforcement, bootstrap admin, local auth, optional OIDC), and an empty dashboard frontend. Milestone: deploy Componode, log in, see an empty dashboard."
 
 ## Clarifications
 
@@ -43,7 +43,7 @@ dashboard renders with navigation.
 1. **Given** a fresh PostgreSQL instance and a configured `.env` file with
    `BOOTSTRAP_ADMIN_PASSWORD` set, **When** the engineer starts the
    Componode stack, **Then** all database migrations run automatically and
-   the schema (28 tables) is created without errors.
+   the schema (24 tables) is created without errors.
 2. **Given** the stack is running and the database is empty, **When** the
    engineer navigates to the Componode URL in a browser, **Then** a login
    page is displayed.
@@ -263,7 +263,8 @@ metrics are present.
 ### Functional Requirements
 
 - **FR-001**: System MUST run database migrations on boot, creating all
-  28 tables (per ADR-077) including the `password_reset_tokens` table
+  24 tables (per ADR-077, see data-model.md for count reconciliation)
+  including the `password_reset_tokens` table
   and append-only triggers on audit tables.
 - **FR-002**: System MUST bootstrap an admin account on first boot (empty
   database) using `BOOTSTRAP_ADMIN_USERNAME` and
@@ -357,7 +358,7 @@ metrics are present.
   `app_settings`.
 - **Password Reset Token**: A single-use reset token (SHA-256 hashed) with
   expiry, linked to a person. Stored in `password_reset_tokens`.
-- **Database Schema**: 28 tables covering all v1 entities (persons,
+- **Database Schema**: 24 tables covering all v1 entities (persons,
   sessions, digital_products, components, component_instances,
   component_groups, line_of_businesses, teams, importer_configs,
   import_runs, import_run_errors, oidc_config, app_settings,
@@ -371,7 +372,7 @@ metrics are present.
 
 - **SC-001**: A new deployer can go from clone to running Componode (with
   a logged-in admin viewing an empty dashboard) in under 15 minutes.
-- **SC-002**: All 28 database tables are created by migrations on first
+- **SC-002**: All 24 database tables are created by migrations on first
   boot, with zero manual SQL execution required.
 - **SC-003**: A user can log in and navigate the empty dashboard without
   encountering any errors or broken links.
@@ -395,6 +396,12 @@ metrics are present.
 - **SC-011**: 95% of read API requests complete in under 500ms, and 95%
   of write API requests complete in under 1 second, under single-instance
   v1 load of up to 50 concurrent users (measured at the 95th percentile).
+
+> **Note**: SC-010 and SC-011 are post-launch validation criteria measured
+> in a staging/Docker Compose environment, not automated test tasks in
+> 001-foundation. They are validated during the 006-deployment-and-docs
+> feature when the full Docker Compose stack is tested end-to-end.
+
 - **SC-012**: All frontend pages pass WCAG 2.1 Level AA verification —
   keyboard navigation works on every interactive element, color contrast
   meets 4.5:1 for normal text, and at least one screen reader (NVDA or
