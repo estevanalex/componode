@@ -1,0 +1,16 @@
+### ADR-071 — API error response format
+
+**Context**: Q21 established RBAC. What is the error response shape?
+
+**Decision**: **`{code, message, details?}`.** `code` is a machine-readable
+string (e.g. `"AUTH_RATE_LIMITED"`, `"VALIDATION_FAILED"`, `"CYCLE_DETECTED"`)
+— a controlled enum defined in `packages/core`. `message` is human-readable.
+`details` is optional (e.g. validation errors array, retry-after seconds).
+RFC 7807 wrapping is a post-v1 additive option (mechanical transform, the
+`code`/`message`/`details` fields are preserved as extensions).
+
+**Rationale**: RFC 7807 is "correct" for a public API with external clients,
+but v1's only client is the frontend (co-deployed). `code` is what the
+frontend actually needs (switch on `"AUTH_RATE_LIMITED"` to show a specific
+message). The `code` strings are a controlled enum in `core` — machine-
+readable, type-safe, no URI namespace to maintain.

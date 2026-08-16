@@ -1,0 +1,12 @@
+### ADR-034 — ComponentInstance upsert key
+
+**Context**: [ADR-025](./ADR-025-importer-interface-pull-only-asyncgenerator.md) defines component upsert by `(category, provider,
+externalId)` but is silent on instance matching across runs.
+
+**Decision**: **`(componentId, instanceExternalId)`.** Importers provide a
+stable per-instance `externalId` (e.g. AWS API Gateway Stage ARN, K8s pod
+name, web URL hash). `environment` is an attribute, not part of the key.
+
+**Rationale**: Scales to multiple instances per environment (an API Gateway
+with three `PRODUCTION` stages); doesn't force a display attribute (`region`/
+`url`) into the identity role; mirrors the component's own upsert key pattern.
