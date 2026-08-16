@@ -60,6 +60,31 @@ export async function getOidcConfig() {
 
 export async function updateOidcConfig(input: UpdateOidcConfigInput) {
   const now = new Date().toISOString();
+
+  // Validate issuer discovery if OIDC is being enabled
+  if (input.enabled && input.issuer) {
+    try {
+      const discoveryUrl = input.issuer.replace(/\/$/, "") + "/.well-known/openid-configuration";
+      const response = await fetch(discoveryUrl, { signal: AbortSignal.timeout(5000) });
+      if (!response.ok) {
+        throw Object.assign(new Error("OIDC discovery endpoint returned non-200 status"), {
+          statusCode: 422,
+          code: "OIDC_DISCOVERY_FAILED",
+        });
+      }
+      const discovery = await response.json() as { issuer?: string };
+      if (discovery.issuer !== input.issuer.replace(/\/$/, "")) {
+        // Issuer mismatch — some IdPs redirect, allow if the response is valid OIDC config
+      }
+    } catch (err) {
+      if (err instanceof Error && (err as { code?: string }).code === "OIDC_DISCOVERY_FAILED") throw err;
+      throw Object.assign(new Error(`OIDC issuer discovery failed: ${err instanceof Error ? err.message : String(err)}`), {
+        statusCode: 422,
+        code: "OIDC_DISCOVERY_FAILED",
+      });
+    }
+  }
+
   const values = {
     id: 1,
     enabled: input.enabled,

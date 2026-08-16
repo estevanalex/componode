@@ -1,5 +1,6 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { sql } from "kysely";
+import { uuidv7 } from "uuidv7";
 import { startTestDb, type TestDb } from "../helpers/testcontainers.js";
 
 describe("migrations", () => {
@@ -56,7 +57,7 @@ describe("migrations", () => {
       testDb.db
         .insertInto("persons")
         .values({
-          id: crypto.randomUUID(),
+          id: uuidv7(),
           username: "testuser",
           passwordHash: "hash",
           role: "INVALID_ROLE",
@@ -75,9 +76,9 @@ describe("migrations", () => {
     await testDb.db
       .insertInto("entity_changes")
       .values({
-        id: crypto.randomUUID(),
+        id: uuidv7(),
         entityType: "Component",
-        entityId: crypto.randomUUID(),
+        entityId: uuidv7(),
         action: "CREATE",
         createdAt: new Date().toISOString(),
       })

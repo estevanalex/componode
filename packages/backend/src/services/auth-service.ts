@@ -1,12 +1,7 @@
 import { db } from "../db/connection.js";
-import { generateSessionToken } from "../utils/crypto.js";
 import { verifyPassword } from "../utils/argon2.js";
 import { metrics } from "../plugins/metrics.js";
-
-const ABSOLUTE_TIMEOUT_MS = parseInt(
-  process.env.SESSION_ABSOLUTE_TIMEOUT_MS ?? "43200000",
-  10,
-); // 12h default
+import { createSession } from "./session-service.js";
 
 interface AuthenticatedUser {
   id: string;
@@ -43,20 +38,7 @@ export async function login(
     throw Object.assign(new Error("Invalid credentials"), { statusCode: 401, code: "AUTH_INVALID_CREDENTIALS" });
   }
 
-  const sessionToken = generateSessionToken();
-  const now = new Date();
-  const expiresAt = new Date(now.getTime() + ABSOLUTE_TIMEOUT_MS);
-
-  await db
-    .insertInto("sessions")
-    .values({
-      id: sessionToken,
-      userId: user.id,
-      createdAt: now.toISOString(),
-      lastSeenAt: now.toISOString(),
-      expiresAt: expiresAt.toISOString(),
-    })
-    .execute();
+  const sessionToken = await createSession(user.id);
 
   metrics.authEventsTotal.inc({ event: "login", outcome: "success" });
 

@@ -1,18 +1,18 @@
-import type { ReactNode } from "react";
+import type { AnchorHTMLAttributes } from "react";
 
-interface ExternalLinkProps {
+interface ExternalLinkProps extends AnchorHTMLAttributes<HTMLAnchorElement> {
   href: string;
-  children: ReactNode;
-  className?: string;
 }
 
 /**
  * External link component with rel="noopener noreferrer" (ADR-085).
  * Prevents tab-nabbing attacks when opening links in new tabs.
+ * Extra anchor props (id, aria-label, etc.) are passed through.
  */
-export function ExternalLink({ href, children, className }: ExternalLinkProps) {
+export function ExternalLink({ href, children, className, ...rest }: ExternalLinkProps) {
   return (
     <a
+      {...rest}
       href={href}
       target="_blank"
       rel="noopener noreferrer"

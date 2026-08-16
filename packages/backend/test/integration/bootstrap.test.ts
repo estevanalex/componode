@@ -1,4 +1,5 @@
 import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
+import { uuidv7 } from "uuidv7";
 import { startTestDb, type TestDb } from "../helpers/testcontainers.js";
 
 describe("bootstrap", () => {
@@ -67,7 +68,7 @@ describe("bootstrap", () => {
     await testDb.db
       .insertInto("persons")
       .values({
-        id: crypto.randomUUID(),
+        id: uuidv7(),
         username: "existinguser",
         passwordHash: "hash",
         role: "VIEWER",

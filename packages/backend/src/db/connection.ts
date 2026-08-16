@@ -2,6 +2,7 @@ import { Kysely, PostgresDialect } from "kysely";
 import { Pool } from "pg";
 import { readFileSync } from "fs";
 import type { DB } from "./types.js";
+import { metrics } from "../plugins/metrics.js";
 
 function getEnv(key: string, fallback?: string): string {
   const val = process.env[key];
@@ -41,6 +42,12 @@ export const pool = new Pool({
   max: maxConnections,
   ...sslConfig,
 });
+
+// Update pool gauges periodically
+setInterval(() => {
+  metrics.dbPoolSize.set(maxConnections);
+  metrics.dbPoolAvailable.set(pool.idleCount);
+}, 5000);
 
 export const db = new Kysely<DB>({
   dialect: new PostgresDialect({ pool }),

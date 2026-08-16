@@ -1,6 +1,10 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, type ApiError } from "@/api/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import type { OidcStatus } from "@/api/types";
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -8,6 +12,13 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [oidcEnabled, setOidcEnabled] = useState(false);
+
+  useEffect(() => {
+    api<OidcStatus>("/settings/oidc/status")
+      .then((data) => setOidcEnabled(data.enabled === true))
+      .catch(() => setOidcEnabled(false));
+  }, []);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -35,19 +46,17 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-background">
+    <div className="flex items-center justify-center min-h-screen bg-background p-4">
       <div className="w-full max-w-sm p-8 space-y-6">
         <div className="text-center">
           <h1 className="text-2xl font-bold">Componode</h1>
           <p className="text-sm text-muted-foreground mt-1">Sign in to your account</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           <div className="space-y-2">
-            <label htmlFor="username" className="text-sm font-medium">
-              Username
-            </label>
-            <input
+            <Label htmlFor="username">Username</Label>
+            <Input
               id="username"
               type="text"
               value={username}
@@ -55,39 +64,52 @@ export function LoginPage() {
               required
               autoFocus
               autoComplete="username"
-              className="w-full px-3 py-2 border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+              aria-describedby={error ? "login-error" : undefined}
             />
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="password" className="text-sm font-medium">
-              Password
-            </label>
-            <input
+            <Label htmlFor="password">Password</Label>
+            <Input
               id="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
               autoComplete="current-password"
-              className="w-full px-3 py-2 border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+              aria-describedby={error ? "login-error" : undefined}
             />
           </div>
 
           {error && (
-            <p role="alert" className="text-sm text-destructive">
+            <p id="login-error" role="alert" className="text-sm text-destructive">
               {error}
             </p>
           )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full px-4 py-2 font-medium text-primary-foreground bg-primary rounded-md hover:opacity-90 disabled:opacity-50"
-          >
-            {loading ? "Signing in..." : "Sign in"}
-          </button>
+          <Button type="submit" disabled={loading} className="w-full">
+            {loading ? "Signing in…" : "Sign in"}
+          </Button>
         </form>
+
+        {oidcEnabled && (
+          <>
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">or</span>
+              </div>
+            </div>
+            <a
+              href="/api/v1/auth/oidc/login"
+              className="flex w-full items-center justify-center rounded-md border px-4 py-2 text-sm font-medium hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              Login with OIDC
+            </a>
+          </>
+        )}
       </div>
     </div>
   );

@@ -1,9 +1,12 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
-import { loginSchema, passwordChangeSchema, passwordResetConfirmSchema } from "@componode/core";
+import { loginSchema, registerSchema, passwordChangeSchema, passwordResetConfirmSchema } from "@componode/core";
 import { login, logout } from "../services/auth-service.js";
 import { generatePasswordReset, confirmPasswordReset } from "../services/password-reset-service.js";
+import { initiateLogin, handleCallback, isOidcEnabled } from "../services/oidc-service.js";
 import { hashPassword, verifyPassword } from "../utils/argon2.js";
 import { db } from "../db/connection.js";
+import { createSession } from "../services/session-service.js";
+import { uuidv7 } from "uuidv7";
 import { requireRole } from "../plugins/rbac.js";
 import { SESSION_COOKIE_NAME, type AuthenticatedRequest } from "../plugins/session.js";
 
@@ -144,6 +147,120 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
         });
       }
       throw err;
+    }
+  });
+
+  // POST /auth/register — public self-registration (only if allowSelfRegistration is enabled)
+  app.post("/auth/register", async (req: FastifyRequest, reply: FastifyReply) => {
+    // Check if self-registration is enabled
+    const settingsRow = await db
+      .selectFrom("app_settings")
+      .select("app_settings.value")
+      .where("app_settings.key", "=", "allow_self_registration")
+      .executeTakeFirst();
+
+    const allowSelfRegistration = settingsRow?.value === true;
+    if (!allowSelfRegistration) {
+      return reply.status(404).send({ code: "NOT_FOUND", message: "Self-registration is not enabled" });
+    }
+
+    const parsed = registerSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.status(400).send({
+        code: "VALIDATION_FAILED",
+        message: "Invalid input",
+        details: parsed.error.issues,
+      });
+    }
+
+    // Check username uniqueness
+    const existing = await db
+      .selectFrom("persons")
+      .select("persons.id")
+      .where("persons.username", "=", parsed.data.username)
+      .executeTakeFirst();
+
+    if (existing) {
+      return reply.status(409).send({ code: "AUTH_USERNAME_TAKEN", message: "Username already taken" });
+    }
+
+    const passwordHash = await hashPassword(parsed.data.password);
+    const now = new Date().toISOString();
+    const id = uuidv7();
+    const slug = parsed.data.username.toLowerCase().replace(/[^a-z0-9_-]/g, "-");
+
+    await db
+      .insertInto("persons")
+      .values({
+        id,
+        username: parsed.data.username,
+        passwordHash,
+        role: "VIEWER",
+        displayName: parsed.data.displayName ?? null,
+        slug,
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .execute();
+
+    // Auto-login: create session
+    const sessionToken = await createSession(id);
+    reply.setCookie(SESSION_COOKIE_NAME, sessionToken, SESSION_COOKIE_OPTIONS);
+    const csrfToken = (reply as unknown as { setCsrfCookie: () => string }).setCsrfCookie();
+
+    const user = await db
+      .selectFrom("persons")
+      .select(["persons.id", "persons.username", "persons.role", "persons.displayName"])
+      .where("persons.id", "=", id)
+      .executeTakeFirst();
+
+    return reply.status(201).send({ user, csrfToken });
+  });
+
+  // GET /auth/oidc/status — public endpoint for login page to check if OIDC is enabled
+  app.get("/auth/oidc/status", async (_req: FastifyRequest, reply: FastifyReply) => {
+    const enabled = await isOidcEnabled();
+    return reply.status(200).send({ enabled });
+  });
+
+  // POST /auth/oidc/login — initiate OIDC login, redirect to IdP
+  app.post("/auth/oidc/login", async (req: FastifyRequest, reply: FastifyReply) => {
+    const query = req.query as { redirect_uri?: string };
+    try {
+      const redirectUrl = await initiateLogin(query.redirect_uri ?? "/");
+      return reply.status(302).redirect(redirectUrl);
+    } catch (err) {
+      const error = err as { statusCode?: number; code?: string; message?: string };
+      if (error.statusCode === 503) {
+        return reply.status(503).send({ code: "OIDC_NOT_CONFIGURED", message: "OIDC is not configured" });
+      }
+      throw err;
+    }
+  });
+
+  // GET /auth/oidc/callback — OIDC callback, exchange code, create session, redirect
+  app.get("/auth/oidc/callback", async (req: FastifyRequest, reply: FastifyReply) => {
+    const query = req.query as { code?: string; state?: string; error?: string };
+    
+    if (query.error) {
+      return reply.status(302).redirect(`/login?error=oidc_${query.error}`);
+    }
+
+    if (!query.code || !query.state) {
+      return reply.status(400).send({ code: "OIDC_INVALID_CODE", message: "Missing code or state parameter" });
+    }
+
+    try {
+      const { sessionToken, redirectUri } = await handleCallback(query.code, query.state);
+      reply.setCookie(SESSION_COOKIE_NAME, sessionToken, SESSION_COOKIE_OPTIONS);
+      const csrfToken = (reply as unknown as { setCsrfCookie: () => string }).setCsrfCookie();
+      // Pass CSRF token as query param for the frontend to store (since this is a redirect, not JSON)
+      return reply.status(302).redirect(`${redirectUri}?csrf=${csrfToken}`);
+    } catch (err) {
+      const error = err as { statusCode?: number; code?: string; message?: string };
+      const code = error.code ?? "OIDC_INVALID_CODE";
+      return reply.status(302).redirect(`/login?error=${code.toLowerCase()}`);
     }
   });
 }

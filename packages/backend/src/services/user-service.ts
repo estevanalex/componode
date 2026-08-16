@@ -1,3 +1,4 @@
+import { uuidv7 } from "uuidv7";
 import { db } from "../db/connection.js";
 import { hashPassword } from "../utils/argon2.js";
 import type { CreateUserInput, UpdateUserInput } from "@componode/core";
@@ -23,7 +24,7 @@ export async function createUser(input: CreateUserInput) {
 
   const passwordHash = await hashPassword(input.password);
   const now = new Date().toISOString();
-  const id = crypto.randomUUID();
+  const id = uuidv7();
 
   await db
     .insertInto("persons")

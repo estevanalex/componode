@@ -1,4 +1,29 @@
 import { db } from "../db/connection.js";
+import { generateSessionToken } from "../utils/crypto.js";
+
+const ABSOLUTE_TIMEOUT_MS = parseInt(
+  process.env.SESSION_ABSOLUTE_TIMEOUT_MS ?? "43200000",
+  10,
+); // 12h default
+
+export async function createSession(userId: string): Promise<string> {
+  const sessionToken = generateSessionToken();
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + ABSOLUTE_TIMEOUT_MS);
+
+  await db
+    .insertInto("sessions")
+    .values({
+      id: sessionToken,
+      userId,
+      createdAt: now.toISOString(),
+      lastSeenAt: now.toISOString(),
+      expiresAt: expiresAt.toISOString(),
+    })
+    .execute();
+
+  return sessionToken;
+}
 
 export async function revokeSession(sessionId: string): Promise<void> {
   const now = new Date().toISOString();

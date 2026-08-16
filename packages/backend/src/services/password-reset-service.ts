@@ -1,3 +1,4 @@
+import { uuidv7 } from "uuidv7";
 import { db } from "../db/connection.js";
 import { generateResetToken, hashToken } from "../utils/crypto.js";
 import { hashPassword } from "../utils/argon2.js";
@@ -13,7 +14,7 @@ export async function generatePasswordReset(userId: string): Promise<string> {
   await db
     .insertInto("password_reset_tokens")
     .values({
-      id: crypto.randomUUID(),
+      id: uuidv7(),
       userId,
       tokenHash,
       expiresAt: expiresAt.toISOString(),

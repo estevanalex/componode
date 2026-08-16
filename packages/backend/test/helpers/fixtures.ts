@@ -1,3 +1,4 @@
+import { uuidv7 } from "uuidv7";
 import { hashPassword } from "../../src/utils/argon2.js";
 
 export const TEST_PASSWORD = "TestPassword123!";
@@ -16,7 +17,7 @@ export interface TestUser {
 export async function createTestUser(overrides: Partial<TestUser> = {}): Promise<TestUser> {
   const passwordHash = await hashPassword(overrides.passwordHash ?? TEST_PASSWORD);
   return {
-    id: overrides.id ?? crypto.randomUUID(),
+    id: overrides.id ?? uuidv7(),
     username: overrides.username ?? TEST_USERNAME,
     passwordHash,
     role: overrides.role ?? "VIEWER",

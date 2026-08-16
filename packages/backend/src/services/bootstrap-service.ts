@@ -1,3 +1,4 @@
+import { uuidv7 } from "uuidv7";
 import { db } from "../db/connection.js";
 import { hashPassword } from "../utils/argon2.js";
 
@@ -38,7 +39,7 @@ export async function bootstrapAdmin(): Promise<void> {
   await db
     .insertInto("persons")
     .values({
-      id: crypto.randomUUID(),
+      id: uuidv7(),
       username,
       passwordHash,
       role: "ADMIN",

@@ -1,6 +1,8 @@
 import { type RouteObject } from "react-router-dom";
 import { AuthGuard } from "@/components/layout/auth-guard";
 import { LoginPage } from "@/pages/login";
+import { RegisterPage } from "@/pages/register";
+import { OidcCallbackPage } from "@/pages/oidc-callback";
 import { DashboardPage } from "@/pages/dashboard";
 import { ProductsPage } from "@/pages/products";
 import { ComponentsPage } from "@/pages/components";
@@ -12,6 +14,8 @@ import { NotFoundPage } from "@/pages/not-found";
 
 export const routes: RouteObject[] = [
   { path: "/login", element: <LoginPage /> },
+  { path: "/register", element: <RegisterPage /> },
+  { path: "/auth/oidc/callback", element: <OidcCallbackPage /> },
   {
     path: "/",
     element: (
