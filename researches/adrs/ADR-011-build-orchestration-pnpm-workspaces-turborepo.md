@@ -1,5 +1,7 @@
 ### ADR-011 — Build orchestration: pnpm workspaces + Turborepo
 
+> **Status:** Ratified
+
 **Context**: The monorepo will have ~10 packages (core, backend, frontend, 7
 importers) with cross-dependencies.
 

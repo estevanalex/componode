@@ -96,9 +96,10 @@ human-confirmed).
   `BELONGS_TO` edges, specs that auto-derive product hierarchy from importer
   data, removing the human authoring step from the hierarchy UI.
 - **Permits**: Importers yielding `DEPENDS_ON`/`SOURCES_FROM`/`EXPOSES`
-  component-to-component edges (reserved for v2 per ADR-030, but the principle
-  doesn't forbid the *concept* — it forbids importer-declared *product* edges
-  in v1), humans authoring all product-level edges, the Platform Product
+  component-to-component edges (reserved for v2 per ADR-019 and ADR-057, but the
+  principle doesn't forbid the *concept* — it forbids importer-declared
+  *product* edges in v1), humans authoring all product-level edges, the Platform
+  Product
   workflow (ADR-017) as a human-guided action.
 
 ### VI. Test-First (NON-NEGOTIABLE)
@@ -208,10 +209,10 @@ development guidance and ADR history.
 
 ### v1.1 Roadmap (deferred from v1, queued for the next cycle)
 
-- RFC 7807 wrapping for error responses (ADR-052).
-- Range/OR filters on list endpoints (ADR-063).
-- Invite-based registration (ADR-056).
-- Runtime-loaded importer plugins (ADR-026).
+- RFC 7807 wrapping for error responses (ADR-071).
+- Range/OR filters on list endpoints (ADR-081).
+- Invite-based registration (ADR-075).
+- Runtime-loaded importer plugins (ADR-012).
 - E2E tests (ADR-029).
 - Per-env blast-radius traversal (ADR-015, Phase 4+).
 - Kubernetes/Helm packaging (ADR-028, community-contributed).

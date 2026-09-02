@@ -1,5 +1,7 @@
 ### ADR-002 — License: Apache 2.0
 
+> **Status:** Ratified
+
 **Context**: The tool imports from proprietary platforms (AWS, Azure, GitHub)
 and may be wrapped into commercial offerings.
 

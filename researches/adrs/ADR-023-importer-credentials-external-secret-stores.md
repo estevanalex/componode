@@ -1,5 +1,7 @@
 ### ADR-023 — Importer credentials: external secret stores
 
+> **Status:** Ratified
+
 **Context**: Importers need credentials to access GitHub/AWS/etc. The app
 should not be a secret store.
 

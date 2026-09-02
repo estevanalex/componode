@@ -1,5 +1,7 @@
 ### ADR-039 — Importer trigger auth boundary
 
+> **Status:** Ratified
+
 **Context**: [ADR-022](./ADR-022-importer-execution-scheduled-on-demand.md) says scheduled + on-demand. [ADR-027](./ADR-027-authentication-built-in-local-optional-oidc.md) defines RBAC. Who can
 trigger runs and configure importers?
 

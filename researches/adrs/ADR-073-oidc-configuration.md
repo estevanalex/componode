@@ -1,5 +1,7 @@
 ### ADR-073 — OIDC configuration
 
+> **Status:** Ratified
+
 **Context**: [ADR-027](./ADR-027-authentication-built-in-local-optional-oidc.md) defines optional OIDC with JIT + claim-based role
 mapping. How is it configured?
 

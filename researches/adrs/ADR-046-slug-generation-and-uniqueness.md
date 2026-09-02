@@ -1,5 +1,7 @@
 ### ADR-046 — Slug generation and uniqueness
 
+> **Status:** Ratified
+
 **Context**: AGENTS.md mandates `slug` on `DigitalProduct`, `Component`,
 `ComponentInstance` but doesn't define generation or collision handling.
 

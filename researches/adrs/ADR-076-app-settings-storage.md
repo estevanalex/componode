@@ -1,5 +1,7 @@
 ### ADR-076 — App settings storage
 
+> **Status:** Ratified
+
 **Context**: [ADR-075](./ADR-075-self-registration.md) introduced `allowSelfRegistration`. Other app-wide
 settings are coming (session timeouts, etc.).
 

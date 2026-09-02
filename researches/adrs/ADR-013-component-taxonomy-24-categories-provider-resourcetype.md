@@ -1,5 +1,7 @@
 ### ADR-013 — Component taxonomy: 24 categories + provider + resourceType
 
+> **Status:** Ratified
+
 **Context**: The component type taxonomy is the heart of the tool. Research
 across 18 tools (IDPs, cloud/CSPM, API/MCP, CMDB/EA, Kubernetes) confirmed
 two-level classification is the industry norm.

@@ -1,5 +1,7 @@
 ### ADR-034 — ComponentInstance upsert key
 
+> **Status:** Ratified
+
 **Context**: [ADR-025](./ADR-025-importer-interface-pull-only-asyncgenerator.md) defines component upsert by `(category, provider,
 externalId)` but is silent on instance matching across runs.
 

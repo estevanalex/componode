@@ -1,5 +1,7 @@
 ### ADR-087 — CSRF protection
 
+> **Status:** Ratified
+
 **Context**: [ADR-086](./ADR-086-session-cookie-security-flags.md)'s `SameSite: Lax` blocks cross-site POST/PUT/DELETE on
 modern browsers, but legacy browsers and subdomain attacks are gaps.
 

@@ -1,5 +1,7 @@
 ### ADR-100 — Audit log integrity
 
+> **Status:** Ratified
+
 **Context**: [ADR-052](./ADR-052-audit-model-three-tier.md) defines audit tables but no rule says they're
 tamper-proof. A compromised Admin could edit `entity_changes` to cover
 tracks.

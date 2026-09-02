@@ -1,5 +1,7 @@
 ### ADR-003 — Project name: Componode
 
+> **Status:** Ratified
+
 **Context**: The repo needs a real name for the OSS release (package name,
 README, import paths, Docker image).
 

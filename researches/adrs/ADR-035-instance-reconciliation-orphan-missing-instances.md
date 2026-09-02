@@ -1,5 +1,7 @@
 ### ADR-035 — Instance reconciliation: orphan missing instances
 
+> **Status:** Ratified
+
 **Context**: An importer yields a component with `instances[]`. What happens to
 instance rows from a previous run that are absent from the current yield?
 

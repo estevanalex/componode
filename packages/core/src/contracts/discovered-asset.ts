@@ -6,7 +6,7 @@ export interface DiscoveredAssetEnvironment {
   region?: string | null;
   status?: InstanceStatus | null;
   version?: string | null;
-  externalId?: string | null;
+  externalId: string;
   rawConfig?: Record<string, unknown> | null;
 }
 

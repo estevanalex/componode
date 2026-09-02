@@ -1,5 +1,7 @@
 ### ADR-007 — Backend framework: Fastify (kept)
 
+> **Status:** Ratified
+
 **Context**: The prior project used Fastify + neo4j-driver. The DB change
 doesn't force a framework change.
 

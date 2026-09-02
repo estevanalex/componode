@@ -1,5 +1,7 @@
 ### ADR-079 — Enum constant structure
 
+> **Status:** Ratified
+
 **Context**: [ADR-078](./ADR-078-database-migrations.md) has enum values as `core` constants. What is their
 structure?
 

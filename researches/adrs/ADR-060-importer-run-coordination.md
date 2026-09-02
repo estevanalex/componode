@@ -1,5 +1,7 @@
 ### ADR-060 — Importer run coordination
 
+> **Status:** Ratified
+
 **Context**: [ADR-022](./ADR-022-importer-execution-scheduled-on-demand.md) says scheduled + on-demand. How is a run actually
 started?
 

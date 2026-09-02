@@ -1,5 +1,7 @@
 ### ADR-064 — Importer validation harness
 
+> **Status:** Ratified
+
 **Context**: [ADR-029](./ADR-029-testing-shared-importer-harness-integration-tests.md) says "shared harness." What does it check and where does
 it run?
 

@@ -185,7 +185,7 @@ Key-value application settings (ADR-076). JSONB values for flexibility.
 | `version` | `text` | nullable | |
 | `deployedAt` | `timestamptz` | nullable | |
 | `rawConfig` | `jsonb` | nullable | Arbitrary importer data (untrusted) |
-| `externalId` | `text` | nullable | Source-system instance ID |
+| `externalId` | `text` | NOT NULL | Source-system instance ID |
 | `createdBy` | `uuid` | nullable, FK → `persons.id` ON DELETE SET NULL | |
 | `updatedBy` | `uuid` | nullable, FK → `persons.id` ON DELETE SET NULL | |
 | `createdAt` | `timestamptz` | NOT NULL, default `now()` | |
@@ -195,8 +195,8 @@ Key-value application settings (ADR-076). JSONB values for flexibility.
 `idx_component_instances_environment`,
 `idx_component_instances_external_id`
 
-**Unique constraint**: `(componentId, environment, externalId)` — the
-upsert key (ADR-034)
+**Unique constraint**: `(componentId, externalId)` — the per-instance
+upsert key (ADR-034); `environment` is an attribute, not part of the key.
 
 ---
 

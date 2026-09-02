@@ -1,5 +1,7 @@
 ### ADR-083 — v1 feature breakdown
 
+> **Status:** Ratified
+
 **Context**: The ADRs define architecture. Spec-kit needs feature descriptions.
 Is v1 one spec or many?
 

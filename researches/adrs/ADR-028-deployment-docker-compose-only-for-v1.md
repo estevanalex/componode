@@ -1,5 +1,7 @@
 ### ADR-028 — Deployment: Docker Compose only for v1
 
+> **Status:** Ratified
+
 **Context**: The prior project targeted Kubernetes via Kustomize. For an OSS
 v1, the deployment surface should be minimal.
 

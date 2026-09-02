@@ -1,5 +1,7 @@
 ### ADR-065 — Package dependency graph
 
+> **Status:** Ratified
+
 **Context**: [ADR-012](./ADR-012-repo-structure-pnpm-monorepo-with-workspaces.md) defined the layout. What are the exact dependency edges?
 
 **Decision**: **`packages/core` is the leaf (zero deps on other `@componode/*`

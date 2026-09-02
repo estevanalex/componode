@@ -1,5 +1,7 @@
 ### ADR-101 — Database connection security
 
+> **Status:** Ratified
+
 **Context**: The database connection is the crown-jewel trust boundary.
 Without TLS, the connection string and all query data are sniffable. Without
 pool limits, a burst of requests can exhaust Postgres connections. Without

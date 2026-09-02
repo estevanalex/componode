@@ -1,5 +1,7 @@
 ### ADR-067 — Logger abstraction
 
+> **Status:** Ratified
+
 **Context**: [ADR-056](./ADR-056-importer-interface-signature.md)'s context includes `logger`. [ADR-032](./ADR-032-observability-full.md) mandates Pino. Do
 importers receive raw `pino.Logger` or an abstraction?
 

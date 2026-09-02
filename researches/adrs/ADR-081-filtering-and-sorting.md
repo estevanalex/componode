@@ -1,5 +1,7 @@
 ### ADR-081 — Filtering and sorting
 
+> **Status:** Ratified
+
 **Context**: List endpoints need filtering and sorting.
 
 **Decision**: **Fixed query params per endpoint, AND-only, single-value

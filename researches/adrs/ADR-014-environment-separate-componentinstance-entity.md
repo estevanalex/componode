@@ -1,5 +1,7 @@
 ### ADR-014 — Environment: separate ComponentInstance entity
 
+> **Status:** Ratified
+
 **Context**: A component almost always exists in multiple environments
 simultaneously (dev + staging + prod).
 

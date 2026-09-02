@@ -1,5 +1,7 @@
 ### ADR-054 — RBAC permission matrix
 
+> **Status:** Ratified
+
 **Context**: [ADR-027](./ADR-027-authentication-built-in-local-optional-oidc.md) names three roles but never enumerates permissions.
 
 **Decision**: **Matrix approved as proposed in Q22.**

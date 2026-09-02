@@ -52,7 +52,7 @@
 | [ADR-022](./adrs/ADR-022-importer-execution-scheduled-on-demand.md) | Importer execution: scheduled + on-demand |
 | [ADR-023](./adrs/ADR-023-importer-credentials-external-secret-stores.md) | Importer credentials: external secret stores |
 | [ADR-024](./adrs/ADR-024-importer-registry-in-tree-code-registered.md) | Importer registry: in-tree, code-registered |
-| [ADR-025](./adrs/ADR-025-importer-interface-pull-only-asyncgenerator.md) | Importer interface: pull-only AsyncGenerator |
+| [ADR-025](./adrs/ADR-025-importer-interface-pull-only-asyncgenerator.md) | Importer interface: pull-only AsyncGenerator (superseded by ADR-056/057) |
 | [ADR-026](./adrs/ADR-026-v1-importer-scope-7-importers.md) | v1 importer scope: 7 importers |
 
 ### Auth & Security

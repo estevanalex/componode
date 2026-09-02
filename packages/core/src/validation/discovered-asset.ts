@@ -7,7 +7,7 @@ const discoveredAssetEnvironmentSchema = z.object({
   region: z.string().nullable().optional(),
   status: z.enum(["RUNNING", "STOPPED", "ERROR", "GONE"]).nullable().optional(),
   version: z.string().nullable().optional(),
-  externalId: z.string().nullable().optional(),
+  externalId: z.string().min(1),
   rawConfig: z.record(z.string(), z.unknown()).nullable().optional(),
 });
 

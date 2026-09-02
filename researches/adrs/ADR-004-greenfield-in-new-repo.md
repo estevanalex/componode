@@ -1,5 +1,7 @@
 ### ADR-004 — Greenfield in new repo
 
+> **Status:** Ratified
+
 **Context**: Nearly every architectural decision changes a load-bearing layer
 of the prior project (Neo4j→Postgres, multi-tenant→single-org, Cypher→Kysely,
 no importers→importer framework, etc.).

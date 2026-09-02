@@ -1,5 +1,7 @@
 ### ADR-085 — XSS prevention
 
+> **Status:** Ratified
+
 **Context**: React escapes by default, but `dangerouslySetInnerHTML`,
 `href="javascript:..."`, and `target="_blank"` without `rel="noopener
 noreferrer"` are XSS/tabnabbing vectors.

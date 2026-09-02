@@ -1,5 +1,7 @@
 ### ADR-093 — TLS / HTTPS for production
 
+> **Status:** Ratified
+
 **Context**: Without TLS, the session cookie, OIDC authorization code flow,
 and API responses are transmitted in plaintext.
 

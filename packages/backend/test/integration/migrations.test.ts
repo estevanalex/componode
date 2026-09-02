@@ -92,4 +92,81 @@ describe("migrations", () => {
         .execute(),
     ).rejects.toThrow();
   });
+
+  it("enforces NOT NULL on component_instances.externalId", async () => {
+    testDb = await startTestDb();
+    const componentId = uuidv7();
+    const now = new Date().toISOString();
+
+    await testDb.db
+      .insertInto("components")
+      .values({
+        id: componentId,
+        name: "Test Component",
+        slug: "test-component",
+        category: "COMPUTE",
+        provider: "AWS",
+        resourceType: "ec2:instance",
+        lifecycle: "ACTIVE",
+        createdAt: now,
+        updatedAt: now,
+      })
+      .execute();
+
+    await expect(
+      sql`INSERT INTO component_instances (id, componentId, environment, status, createdAt, updatedAt)
+          VALUES (${uuidv7()}, ${componentId}, 'DEV', 'RUNNING', ${now}, ${now})`.execute(
+        testDb.db,
+      ),
+    ).rejects.toThrow();
+  });
+
+  it("enforces unique (componentId, externalId) on component_instances", async () => {
+    testDb = await startTestDb();
+    const componentId = uuidv7();
+    const now = new Date().toISOString();
+
+    await testDb.db
+      .insertInto("components")
+      .values({
+        id: componentId,
+        name: "Test Component",
+        slug: "test-component",
+        category: "COMPUTE",
+        provider: "AWS",
+        resourceType: "ec2:instance",
+        lifecycle: "ACTIVE",
+        createdAt: now,
+        updatedAt: now,
+      })
+      .execute();
+
+    await testDb.db
+      .insertInto("component_instances")
+      .values({
+        id: uuidv7(),
+        componentId,
+        environment: "DEV",
+        status: "RUNNING",
+        externalId: "same-instance",
+        createdAt: now,
+        updatedAt: now,
+      })
+      .execute();
+
+    await expect(
+      testDb.db
+        .insertInto("component_instances")
+        .values({
+          id: uuidv7(),
+          componentId,
+          environment: "PRODUCTION",
+          status: "RUNNING",
+          externalId: "same-instance",
+          createdAt: now,
+          updatedAt: now,
+        })
+        .execute(),
+    ).rejects.toThrow();
+  });
 });

@@ -1,5 +1,7 @@
 ### ADR-012 — Repo structure: pnpm monorepo with workspaces
 
+> **Status:** Ratified
+
 **Context**: Importers need isolation (the AWS importer pulls `@aws-sdk/*`, the
 GitHub importer pulls `octokit` — they shouldn't pollute each other).
 
@@ -18,6 +20,3 @@ dependency set. The shared `DiscoveredAsset` contract in `packages/core` is the
 seam that keeps importers uniform. This structure enables publishing importers
 as standalone npm packages later (path to runtime-loaded plugins).
 
----
-
-## Domain Model

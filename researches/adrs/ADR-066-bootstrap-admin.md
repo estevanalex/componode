@@ -1,5 +1,7 @@
 ### ADR-066 — Bootstrap admin
 
+> **Status:** Ratified
+
 **Context**: A fresh deployment has an empty DB — no users, no way to log in.
 [ADR-027](./ADR-027-authentication-built-in-local-optional-oidc.md)'s OIDC JIT creates Viewers; no one can promote to Admin.
 

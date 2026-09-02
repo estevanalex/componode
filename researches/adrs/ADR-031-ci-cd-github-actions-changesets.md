@@ -1,5 +1,7 @@
 ### ADR-031 — CI/CD: GitHub Actions + changesets
 
+> **Status:** Ratified
+
 **Context**: CI is what enforces the importer contract at the gate.
 
 **Decision**: **GitHub Actions (lint + typecheck + unit + integration) +

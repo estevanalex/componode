@@ -1,5 +1,7 @@
 ### ADR-051 — Hierarchy traversal: merged CTE with edge types
 
+> **Status:** Ratified
+
 **Context**: `COMPOSES` and `CONSUMES_FROM` both build the product hierarchy.
 Do they form one merged graph or two separate graphs in queries?
 

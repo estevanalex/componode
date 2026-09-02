@@ -1,5 +1,7 @@
 ### ADR-086 — Session cookie security flags
 
+> **Status:** Ratified
+
 **Context**: [ADR-043](./ADR-043-session-storage.md) mandates server-side sessions. The session ID is the
 cookie value. Without `HttpOnly`/`Secure`/`SameSite`, the cookie is
 vulnerable to XSS theft, HTTP sniffing, and CSRF.

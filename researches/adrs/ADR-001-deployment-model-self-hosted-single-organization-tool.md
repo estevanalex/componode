@@ -1,5 +1,7 @@
 ### ADR-001 — Deployment model: self-hosted single-organization tool
 
+> **Status:** Ratified
+
 **Context**: The prior project (DPAM) was a hosted multi-tenant SaaS with
 tenant isolation in every query. The pivot to open source re-opens this
 decision.

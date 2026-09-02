@@ -1,5 +1,7 @@
 ### ADR-063 — Importer error surfacing
 
+> **Status:** Ratified
+
 **Context**: A run can fail in several ways. How are errors stored and
 surfaced?
 

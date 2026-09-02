@@ -1,5 +1,7 @@
 ### ADR-006 — Database: PostgreSQL
 
+> **Status:** Ratified
+
 **Context**: The prior project used Neo4j 5 Community. The Composable Product
 Model is graph-shaped, but the v1 headline is importers, not graph analytics.
 

@@ -1,5 +1,7 @@
 ### ADR-033 — Person/UserAccount unification
 
+> **Status:** Ratified
+
 **Context**: [ADR-020](./ADR-020-ownership-lineofbusiness-team-person.md) defines `Person BELONGS_TO Team` (ownership graph);
 [ADR-027](./ADR-027-authentication-built-in-local-optional-oidc.md) defines `UserAccount` (auth principal). Two names for what may be one
 concept.

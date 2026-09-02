@@ -1,11 +1,13 @@
 ### ADR-077 — v1 entity schema (consolidated)
 
+> **Status:** Ratified
+
 **Context**: Across ADRs + Q1–Q51 we accumulated entity definitions in pieces.
 The full schema needs consolidation.
 
 **Decision**: **Full v1 schema (27 tables) approved as proposed in Q45 +
-ComponentGroup addition.** See `docs/data-model.md` (to be generated in spec
-003) for the complete column-level reference. Key entities:
+ComponentGroup addition.** See `specs/001-foundation/data-model.md` for the
+complete column-level reference. Key entities:
 `digital_products`, `components`, `component_instances`, `component_groups`,
 `line_of_businesses`, `teams`, `persons` (unified Person/UserAccount per
 [ADR-033](./ADR-033-person-useraccount-unification.md)). Junction tables: `product_composes`, `product_consumes_from`,

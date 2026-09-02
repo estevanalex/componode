@@ -1,5 +1,7 @@
 ### ADR-025 — Importer interface: pull-only AsyncGenerator
 
+> **Status:** Superseded by [ADR-056](./ADR-056-importer-interface-signature.md) (signature) and [ADR-057](./ADR-057-discoveredasset-final-shape.md) (asset shape).
+
 **Context**: The importer contract must be uniform for the ecosystem to work.
 
 **Decision**: **Pull-only sync.** `Importer.run(config, secretResolver):

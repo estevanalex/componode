@@ -1,5 +1,7 @@
 ### ADR-015 — Product→Component dependency: logical, env-agnostic
 
+> **Status:** Ratified
+
 **Context**: The product hierarchy depends on components. The question is
 whether the dependency is on the logical component or the env-specific instance.
 

@@ -1,5 +1,7 @@
 ### ADR-020 — Ownership: LineOfBusiness + Team + Person
 
+> **Status:** Ratified
+
 **Context**: The Composable Product Model has `OWNS` relationships. The
 prior project had LOB as a seed-only fixture.
 

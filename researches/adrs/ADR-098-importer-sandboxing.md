@@ -1,5 +1,7 @@
 ### ADR-098 — Importer sandboxing
 
+> **Status:** Ratified
+
 **Context**: [ADR-065](./ADR-065-package-dependency-graph.md) mandates importers depend only on `core`. But
 dependency boundaries don't prevent a compromised importer from reading
 `process.env.DATABASE_URL`, spawning a child process, or reading

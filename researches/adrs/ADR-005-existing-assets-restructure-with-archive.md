@@ -1,5 +1,7 @@
 ### ADR-005 — Existing assets: restructure with archive
 
+> **Status:** Ratified
+
 **Context**: The prior repo carries research docs, spec-kit feature docs, and
 skills that are a mix of still-valuable and now-stale.
 

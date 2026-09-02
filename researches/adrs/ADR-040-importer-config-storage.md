@@ -1,5 +1,7 @@
 ### ADR-040 — Importer config storage
 
+> **Status:** Ratified
+
 **Context**: "Importer config" appeared across [ADR-022](./ADR-022-importer-execution-scheduled-on-demand.md)–026 but was never
 defined as an entity.
 

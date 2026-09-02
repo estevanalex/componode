@@ -1,5 +1,7 @@
 ### ADR-074 — OIDC claim-to-role mapping
 
+> **Status:** Ratified
+
 **Context**: Real IdP claims are messy (nested, multi-value, array-of-objects).
 
 **Decision**: **Dot-path `roleClaimPath` + optional `claimValueField` for

@@ -90,7 +90,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     .addColumn("displayName", "text")
     .addColumn("email", "text")
     .addColumn("teamId", "uuid", (col) =>
-      col.references("teams(id)").onDelete("set null"),
+      col.references("teams.id").onDelete("set null"),
     )
     .addColumn("slug", "text", (col) => col.notNull().unique())
     .addColumn("isActive", "boolean", (col) =>
@@ -110,7 +110,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     .createTable("sessions")
     .addColumn("id", "text", (col) => col.primaryKey())
     .addColumn("userId", "uuid", (col) =>
-      col.notNull().references("persons(id)").onDelete("cascade"),
+      col.notNull().references("persons.id").onDelete("cascade"),
     )
     .addColumn("createdAt", "timestamptz", (col) =>
       col.notNull().defaultTo(sql`now()`),
@@ -138,7 +138,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     .createTable("password_reset_tokens")
     .addColumn("id", "uuid", (col) => col.primaryKey())
     .addColumn("userId", "uuid", (col) =>
-      col.notNull().references("persons(id)").onDelete("cascade"),
+      col.notNull().references("persons.id").onDelete("cascade"),
     )
     .addColumn("tokenHash", "text", (col) => col.notNull())
     .addColumn("expiresAt", "timestamptz", (col) => col.notNull())
@@ -201,16 +201,16 @@ export async function up(db: Kysely<unknown>): Promise<void> {
       col.notNull().defaultTo("ACTIVE"),
     )
     .addColumn("lobOwnerId", "uuid", (col) =>
-      col.references("line_of_businesses(id)").onDelete("set null"),
+      col.references("line_of_businesses.id").onDelete("set null"),
     )
     .addColumn("teamOwnerId", "uuid", (col) =>
-      col.references("teams(id)").onDelete("set null"),
+      col.references("teams.id").onDelete("set null"),
     )
     .addColumn("createdBy", "uuid", (col) =>
-      col.references("persons(id)").onDelete("set null"),
+      col.references("persons.id").onDelete("set null"),
     )
     .addColumn("updatedBy", "uuid", (col) =>
-      col.references("persons(id)").onDelete("set null"),
+      col.references("persons.id").onDelete("set null"),
     )
     .addColumn("createdAt", "timestamptz", (col) =>
       col.notNull().defaultTo(sql`now()`),
@@ -246,13 +246,13 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     .addColumn("slug", "text", (col) => col.notNull().unique())
     .addColumn("description", "text")
     .addColumn("teamOwnerId", "uuid", (col) =>
-      col.references("teams(id)").onDelete("set null"),
+      col.references("teams.id").onDelete("set null"),
     )
     .addColumn("createdBy", "uuid", (col) =>
-      col.references("persons(id)").onDelete("set null"),
+      col.references("persons.id").onDelete("set null"),
     )
     .addColumn("updatedBy", "uuid", (col) =>
-      col.references("persons(id)").onDelete("set null"),
+      col.references("persons.id").onDelete("set null"),
     )
     .addColumn("createdAt", "timestamptz", (col) =>
       col.notNull().defaultTo(sql`now()`),
@@ -275,18 +275,18 @@ export async function up(db: Kysely<unknown>): Promise<void> {
       col.notNull().defaultTo("ACTIVE"),
     )
     .addColumn("teamOwnerId", "uuid", (col) =>
-      col.references("teams(id)").onDelete("set null"),
+      col.references("teams.id").onDelete("set null"),
     )
     .addColumn("componentGroupId", "uuid", (col) =>
-      col.references("component_groups(id)").onDelete("set null"),
+      col.references("component_groups.id").onDelete("set null"),
     )
     .addColumn("externalId", "text")
     .addColumn("details", "jsonb")
     .addColumn("createdBy", "uuid", (col) =>
-      col.references("persons(id)").onDelete("set null"),
+      col.references("persons.id").onDelete("set null"),
     )
     .addColumn("updatedBy", "uuid", (col) =>
-      col.references("persons(id)").onDelete("set null"),
+      col.references("persons.id").onDelete("set null"),
     )
     .addColumn("createdAt", "timestamptz", (col) =>
       col.notNull().defaultTo(sql`now()`),
@@ -335,7 +335,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     .createTable("component_instances")
     .addColumn("id", "uuid", (col) => col.primaryKey())
     .addColumn("componentId", "uuid", (col) =>
-      col.notNull().references("components(id)").onDelete("cascade"),
+      col.notNull().references("components.id").onDelete("cascade"),
     )
     .addColumn("environment", "text", (col) => col.notNull())
     .addColumn("url", "text")
@@ -346,12 +346,12 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     .addColumn("version", "text")
     .addColumn("deployedAt", "timestamptz")
     .addColumn("rawConfig", "jsonb")
-    .addColumn("externalId", "text")
+    .addColumn("externalId", "text", (col) => col.notNull())
     .addColumn("createdBy", "uuid", (col) =>
-      col.references("persons(id)").onDelete("set null"),
+      col.references("persons.id").onDelete("set null"),
     )
     .addColumn("updatedBy", "uuid", (col) =>
-      col.references("persons(id)").onDelete("set null"),
+      col.references("persons.id").onDelete("set null"),
     )
     .addColumn("createdAt", "timestamptz", (col) =>
       col.notNull().defaultTo(sql`now()`),
@@ -367,9 +367,8 @@ export async function up(db: Kysely<unknown>): Promise<void> {
       "component_instances_status_check",
       instanceStatusCheck,
     )
-    .addUniqueConstraint("component_instances_component_env_external_idx", [
+    .addUniqueConstraint("component_instances_component_external_idx", [
       "componentId",
-      "environment",
       "externalId",
     ])
     .execute();
@@ -394,10 +393,10 @@ export async function up(db: Kysely<unknown>): Promise<void> {
   await db.schema
     .createTable("product_composes")
     .addColumn("parentId", "uuid", (col) =>
-      col.notNull().references("digital_products(id)").onDelete("cascade"),
+      col.notNull().references("digital_products.id").onDelete("cascade"),
     )
     .addColumn("childId", "uuid", (col) =>
-      col.notNull().references("digital_products(id)").onDelete("cascade"),
+      col.notNull().references("digital_products.id").onDelete("cascade"),
     )
     .addColumn("createdAt", "timestamptz", (col) =>
       col.notNull().defaultTo(sql`now()`),
@@ -412,10 +411,10 @@ export async function up(db: Kysely<unknown>): Promise<void> {
   await db.schema
     .createTable("product_consumes_from")
     .addColumn("consumerId", "uuid", (col) =>
-      col.notNull().references("digital_products(id)").onDelete("cascade"),
+      col.notNull().references("digital_products.id").onDelete("cascade"),
     )
     .addColumn("platformId", "uuid", (col) =>
-      col.notNull().references("digital_products(id)").onDelete("cascade"),
+      col.notNull().references("digital_products.id").onDelete("cascade"),
     )
     .addColumn("createdAt", "timestamptz", (col) =>
       col.notNull().defaultTo(sql`now()`),
@@ -430,10 +429,10 @@ export async function up(db: Kysely<unknown>): Promise<void> {
   await db.schema
     .createTable("product_depends_on_component")
     .addColumn("productId", "uuid", (col) =>
-      col.notNull().references("digital_products(id)").onDelete("cascade"),
+      col.notNull().references("digital_products.id").onDelete("cascade"),
     )
     .addColumn("componentId", "uuid", (col) =>
-      col.notNull().references("components(id)").onDelete("cascade"),
+      col.notNull().references("components.id").onDelete("cascade"),
     )
     .addColumn("createdAt", "timestamptz", (col) =>
       col.notNull().defaultTo(sql`now()`),
@@ -448,10 +447,10 @@ export async function up(db: Kysely<unknown>): Promise<void> {
   await db.schema
     .createTable("component_depends_on_component")
     .addColumn("parentId", "uuid", (col) =>
-      col.notNull().references("components(id)").onDelete("cascade"),
+      col.notNull().references("components.id").onDelete("cascade"),
     )
     .addColumn("childId", "uuid", (col) =>
-      col.notNull().references("components(id)").onDelete("cascade"),
+      col.notNull().references("components.id").onDelete("cascade"),
     )
     .addColumn("createdAt", "timestamptz", (col) =>
       col.notNull().defaultTo(sql`now()`),
@@ -466,10 +465,10 @@ export async function up(db: Kysely<unknown>): Promise<void> {
   await db.schema
     .createTable("component_sources_from")
     .addColumn("serviceId", "uuid", (col) =>
-      col.notNull().references("components(id)").onDelete("cascade"),
+      col.notNull().references("components.id").onDelete("cascade"),
     )
     .addColumn("repositoryId", "uuid", (col) =>
-      col.notNull().references("components(id)").onDelete("cascade"),
+      col.notNull().references("components.id").onDelete("cascade"),
     )
     .addColumn("createdAt", "timestamptz", (col) =>
       col.notNull().defaultTo(sql`now()`),
@@ -484,10 +483,10 @@ export async function up(db: Kysely<unknown>): Promise<void> {
   await db.schema
     .createTable("component_exposes")
     .addColumn("serviceId", "uuid", (col) =>
-      col.notNull().references("components(id)").onDelete("cascade"),
+      col.notNull().references("components.id").onDelete("cascade"),
     )
     .addColumn("apiId", "uuid", (col) =>
-      col.notNull().references("components(id)").onDelete("cascade"),
+      col.notNull().references("components.id").onDelete("cascade"),
     )
     .addColumn("createdAt", "timestamptz", (col) =>
       col.notNull().defaultTo(sql`now()`),
@@ -512,10 +511,10 @@ export async function up(db: Kysely<unknown>): Promise<void> {
       col.notNull().defaultTo(true),
     )
     .addColumn("createdBy", "uuid", (col) =>
-      col.references("persons(id)").onDelete("set null"),
+      col.references("persons.id").onDelete("set null"),
     )
     .addColumn("updatedBy", "uuid", (col) =>
-      col.references("persons(id)").onDelete("set null"),
+      col.references("persons.id").onDelete("set null"),
     )
     .addColumn("createdAt", "timestamptz", (col) =>
       col.notNull().defaultTo(sql`now()`),
@@ -530,13 +529,13 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     .createTable("import_runs")
     .addColumn("id", "uuid", (col) => col.primaryKey())
     .addColumn("configId", "uuid", (col) =>
-      col.notNull().references("importer_configs(id)").onDelete("cascade"),
+      col.notNull().references("importer_configs.id").onDelete("cascade"),
     )
     .addColumn("status", "text", (col) =>
       col.notNull().defaultTo("PENDING"),
     )
     .addColumn("triggeredBy", "uuid", (col) =>
-      col.references("persons(id)").onDelete("set null"),
+      col.references("persons.id").onDelete("set null"),
     )
     .addColumn("startedAt", "timestamptz")
     .addColumn("completedAt", "timestamptz")
@@ -569,7 +568,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     .createTable("import_run_errors")
     .addColumn("id", "uuid", (col) => col.primaryKey())
     .addColumn("runId", "uuid", (col) =>
-      col.notNull().references("import_runs(id)").onDelete("cascade"),
+      col.notNull().references("import_runs.id").onDelete("cascade"),
     )
     .addColumn("assetExternalId", "text")
     .addColumn("errorType", "text", (col) => col.notNull())
@@ -589,7 +588,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     .addColumn("action", "text", (col) => col.notNull())
     .addColumn("changes", "jsonb")
     .addColumn("createdBy", "uuid", (col) =>
-      col.references("persons(id)").onDelete("set null"),
+      col.references("persons.id").onDelete("set null"),
     )
     .addColumn("createdByName", "text")
     .addColumn("createdAt", "timestamptz", (col) =>
@@ -609,7 +608,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     .addColumn("action", "text", (col) => col.notNull())
     .addColumn("reason", "text")
     .addColumn("createdBy", "uuid", (col) =>
-      col.references("persons(id)").onDelete("set null"),
+      col.references("persons.id").onDelete("set null"),
     )
     .addColumn("createdByName", "text")
     .addColumn("createdAt", "timestamptz", (col) =>

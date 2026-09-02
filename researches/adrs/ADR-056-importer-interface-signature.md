@@ -1,5 +1,7 @@
 ### ADR-056 — Importer interface signature (supersedes ADR-025)
 
+> **Status:** Ratified
+
 **Context**: [ADR-025](./ADR-025-importer-interface-pull-only-asyncgenerator.md) says `run(config, secretResolver)`. [ADR-055](./ADR-055-importer-secret-resolution.md) pre-resolves
 secrets. The signature needs reconciliation + observability/cancellation
 hooks.

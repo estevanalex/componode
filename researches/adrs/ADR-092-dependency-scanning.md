@@ -1,5 +1,7 @@
 ### ADR-092 — Dependency scanning
 
+> **Status:** Ratified
+
 **Context**: The dependency tree is the largest external attack surface
 (npm supply chain). A vulnerable dependency is exploitable even if
 Componode's own code is secure.

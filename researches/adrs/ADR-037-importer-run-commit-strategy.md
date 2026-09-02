@@ -1,5 +1,7 @@
 ### ADR-037 — Importer run commit strategy
 
+> **Status:** Ratified
+
 **Context**: An importer run yields thousands of assets. What is the
 transaction boundary?
 

@@ -1,5 +1,7 @@
 ### ADR-058 — Importer cancellation
 
+> **Status:** Ratified
+
 **Context**: [ADR-056](./ADR-056-importer-interface-signature.md) added `signal: AbortSignal` to the context. How does
 cancellation flow?
 

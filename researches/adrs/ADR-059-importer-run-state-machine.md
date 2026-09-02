@@ -1,5 +1,7 @@
 ### ADR-059 — Importer run state machine
 
+> **Status:** Ratified
+
 **Context**: Across [ADR-037](./ADR-037-importer-run-commit-strategy.md), [ADR-054](./ADR-054-rbac-permission-matrix.md), [ADR-058](./ADR-058-importer-cancellation.md) we referenced several run
 statuses. The full state machine needs to be pinned down.
 

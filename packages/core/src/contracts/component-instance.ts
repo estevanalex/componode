@@ -10,7 +10,7 @@ export interface ComponentInstance {
   version?: string | null;
   deployedAt?: string | null;
   rawConfig?: Record<string, unknown> | null;
-  externalId?: string | null;
+  externalId: string;
   createdBy?: string | null;
   updatedBy?: string | null;
   createdAt: string;

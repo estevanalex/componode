@@ -1,5 +1,7 @@
 ### ADR-057 — DiscoveredAsset final shape (supersedes ADR-025)
 
+> **Status:** Ratified
+
 **Context**: [ADR-025](./ADR-025-importer-interface-pull-only-asyncgenerator.md) defined `DiscoveredAsset` with `instances?` and
 `relationships?` (reserved for v2). Q2–Q4 refined instance reconciliation.
 

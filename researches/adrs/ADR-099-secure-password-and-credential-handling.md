@@ -1,5 +1,7 @@
 ### ADR-099 — Secure password and credential handling
 
+> **Status:** Ratified
+
 **Context**: [ADR-044](./ADR-044-password-hashing.md) mandates Argon2id but doesn't cover password
 complexity, reset flows, secret lifecycle, or timing attacks.
 

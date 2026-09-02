@@ -1,5 +1,7 @@
 ### ADR-048 — Graph relationship persistence
 
+> **Status:** Ratified
+
 **Context**: [ADR-016](./ADR-016-component-component-relationships.md) defines 10 relationship types. [ADR-006](./ADR-006-database-postgresql.md) chose Postgres
 over Neo4j — edges must be tables.
 
