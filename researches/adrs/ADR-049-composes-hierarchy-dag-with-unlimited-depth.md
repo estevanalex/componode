@@ -1,5 +1,7 @@
 ### ADR-049 — COMPOSES hierarchy: DAG with unlimited depth
 
+> **Status:** Ratified
+
 **Context**: [ADR-018](./ADR-018-product-types-enum-with-enforced-composition-rules.md)'s relationship table says "Child has one parent" (tree),
 but the Composable Product Model's reuse intent implies a shared platform
 product can be composed into multiple parents (DAG).

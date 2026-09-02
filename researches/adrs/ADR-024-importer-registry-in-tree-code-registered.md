@@ -1,5 +1,7 @@
 ### ADR-024 — Importer registry: in-tree, code-registered
 
+> **Status:** Ratified
+
 **Context**: The way contributors add new importers defines the project's
 extensibility contract.
 

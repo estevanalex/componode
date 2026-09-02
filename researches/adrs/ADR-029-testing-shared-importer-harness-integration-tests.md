@@ -1,5 +1,7 @@
 ### ADR-029 — Testing: shared importer harness + integration tests
 
+> **Status:** Ratified
+
 **Context**: The testing strategy is part of the contributor contract.
 
 **Decision**: **A+ + B.**

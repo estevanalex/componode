@@ -1,5 +1,7 @@
 ### ADR-069 — Prometheus metrics
 
+> **Status:** Ratified
+
 **Context**: [ADR-032](./ADR-032-observability-full.md) lists example metrics. The exact set and labels need
 pinning down.
 

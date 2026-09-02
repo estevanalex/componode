@@ -1,5 +1,7 @@
 ### ADR-047 — Deletion model
 
+> **Status:** Ratified
+
 **Context**: ADRs define `lifecycle`/`status` but never specify "delete"
 across the schema.
 

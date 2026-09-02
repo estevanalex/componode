@@ -1,5 +1,7 @@
 ### ADR-071 — API error response format
 
+> **Status:** Ratified
+
 **Context**: Q21 established RBAC. What is the error response shape?
 
 **Decision**: **`{code, message, details?}`.** `code` is a machine-readable

@@ -1,5 +1,7 @@
 ### ADR-022 — Importer execution: scheduled + on-demand
 
+> **Status:** Ratified
+
 **Context**: Importers need to keep the asset inventory current.
 
 **Decision**: **Scheduled (cron) + on-demand.** In-process scheduler

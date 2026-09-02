@@ -1,5 +1,7 @@
 ### ADR-095 — Input validation
 
+> **Status:** Ratified
+
 **Context**: Without route-boundary validation, a malformed request
 propagates into the service layer and the database, causing storage bloat,
 CHECK constraint violations, or injection vectors.

@@ -1,5 +1,7 @@
 ### ADR-044 — Password hashing
 
+> **Status:** Ratified
+
 **Context**: [ADR-027](./ADR-027-authentication-built-in-local-optional-oidc.md) says "username/password" but doesn't specify the scheme.
 
 **Decision**: **Argon2id via `@node-rs/argon2`, PHC-format storage.** OWASP

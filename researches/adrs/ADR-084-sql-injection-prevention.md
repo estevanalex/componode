@@ -1,5 +1,7 @@
 ### ADR-084 — SQL injection prevention
 
+> **Status:** Ratified
+
 **Context**: Kysely parameterizes by default, but exposes `sql.raw()` and
 `sql.fragment()` for advanced cases. A contributor hitting a query-builder
 limitation (e.g. [ADR-051](./ADR-051-hierarchy-traversal-merged-cte-with-edge-types.md)'s recursive CTE) might reach for `sql.raw()` and

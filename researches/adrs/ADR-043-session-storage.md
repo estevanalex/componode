@@ -1,5 +1,7 @@
 ### ADR-043 — Session storage
 
+> **Status:** Ratified
+
 **Context**: [ADR-027](./ADR-027-authentication-built-in-local-optional-oidc.md) mandates server-side, revocable sessions but doesn't
 specify storage.
 

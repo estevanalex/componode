@@ -1,5 +1,7 @@
 ### ADR-008 — Data layer: Kysely
 
+> **Status:** Ratified
+
 **Context**: The prior project used the Neo4j driver directly (no ORM). For
 Postgres in TypeScript, the options are ORM, query builder, or raw SQL.
 

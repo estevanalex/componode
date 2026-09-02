@@ -1,5 +1,7 @@
 ### ADR-088 — CORS configuration
 
+> **Status:** Ratified
+
 **Context**: In production, the frontend is same-origin (backend serves
 static via `fastify-static`), so CORS is not needed. In dev, the Vite dev
 server runs on a different port. A misconfigured `Access-Control-Allow-

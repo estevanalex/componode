@@ -1,5 +1,7 @@
 ### ADR-017 — Platform Product workflow: full guided workflow in v1
 
+> **Status:** Ratified
+
 **Context**: The Composable Product Model's core value is governing shared
 infrastructure via platform products.
 

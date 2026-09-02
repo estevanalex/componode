@@ -1,5 +1,7 @@
 ### ADR-010 — Frontend: React + Vite + TanStack Query + Tailwind (kept) + shadcn/ui
 
+> **Status:** Ratified
+
 **Context**: The prior frontend is React 18 + Vite + TanStack Query + React
 Router + Tailwind. The pivot doesn't change the frontend's job (data-heavy
 internal-tool UI).

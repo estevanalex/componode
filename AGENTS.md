@@ -107,9 +107,9 @@ require a new grilling session or an explicit superseding ADR.
 │   └── {NNN-feature-name}/        # v1 split: 001-foundation → 002-importer-framework
 │                                  #   → 003-component-catalog + 004-product-hierarchy
 │                                  #   → 005-audit-and-settings + 006-deployment-and-docs
-├── docs/                          # Contributor and user documentation
+├── docs/                          # Contributor and user documentation (006-deployment-and-docs)
 │   ├── importer-development.md    # The importer contributor contract
-│   ├── data-model.md              # Schema, entities, relationships
+│   ├── data-model.md              # Schema, entities, relationships (currently in specs/001-foundation/data-model.md)
 │   └── deployment.md              # Docker Compose self-hosting
 ├── docker-compose.yml             # Full-stack local orchestration
 ├── AGENTS.md                      # This file
@@ -251,10 +251,10 @@ preferences.
   `CONSUMES_FROM`, emitting `edgeType` per hop. One query, full hierarchy,
   the caller can distinguish how each descendant was reached.
 
-### Composition rules (enforced)
+### Composition rules (enforced) (ADR-017, ADR-018)
 
-- `COMPOSES` parent MUST be `BUSINESS_CAPABILITY` or `CUSTOMER_FACING`.
-- `CONSUMES_FROM` target MUST be `PLATFORM`.
+- `COMPOSES` parent MUST be `BUSINESS_CAPABILITY` or `CUSTOMER_FACING` ([ADR-018](./researches/adrs/ADR-018-product-types-enum-with-enforced-composition-rules.md)).
+- `CONSUMES_FROM` target MUST be `PLATFORM` ([ADR-018](./researches/adrs/ADR-018-product-types-enum-with-enforced-composition-rules.md)).
 - The Platform Product workflow (ADR-017) promotes a shared component to a
   platform product by: creating a `DigitalProduct` (type: PLATFORM), wiring
   `DEPENDS_ON` from it to the component, and rewriting the consumers'

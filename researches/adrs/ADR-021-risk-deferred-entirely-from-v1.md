@@ -1,5 +1,7 @@
 ### ADR-021 — Risk: deferred entirely from v1
 
+> **Status:** Ratified
+
 **Context**: The prior project had `Risk` as a model-only entity with no API/UI.
 
 **Decision**: **`Risk` deferred entirely from v1.** No Risk entity, no dashboard

@@ -1,5 +1,7 @@
 ### ADR-018 — Product types: enum with enforced composition rules
 
+> **Status:** Ratified
+
 **Context**: The Composable Product Model defines product roles (business
 capability, platform, customer-facing).
 
@@ -14,9 +16,8 @@ platform product") only holds if the target is typed `PLATFORM`. Without the
 type, `CONSUMES_FROM` collapses into a synonym for `COMPOSES`.
 
 > **CORRECTION (Session 2, [ADR-049](./ADR-049-composes-hierarchy-dag-with-unlimited-depth.md))**: The original "Relationship Type Set"
-> table at the end of this file listed `COMPOSES` cardinality as "Child has
-> one parent; parent has many children" (tree). This was incorrect.
-> `COMPOSES` is a **DAG** — a child can have many parents (a shared platform
-> product composed into multiple business capabilities). See [ADR-049](./ADR-049-composes-hierarchy-dag-with-unlimited-depth.md) for the
-> full rationale and the cycle-detection strategy ([ADR-050](./ADR-050-composes-cycle-detection-implementation.md)). The relationship
-> table below has been updated.
+> table listed `COMPOSES` cardinality as "Child has one parent; parent has many
+> children" (tree). This was incorrect. `COMPOSES` is a **DAG** — a child can
+> have many parents (a shared platform product composed into multiple business
+> capabilities). See [ADR-049](./ADR-049-composes-hierarchy-dag-with-unlimited-depth.md) for the full rationale and the cycle-detection
+> strategy ([ADR-050](./ADR-050-composes-cycle-detection-implementation.md)). The relationship table in the ADR index has been corrected.

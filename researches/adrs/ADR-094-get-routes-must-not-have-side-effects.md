@@ -1,5 +1,7 @@
 ### ADR-094 — GET routes must not have side effects
 
+> **Status:** Ratified
+
 **Context**: Rule 4's CSRF protection covers POST/PUT/PATCH/DELETE but not
 GET. A GET route with side effects is a CSRF vector (`<img src="...">`
 triggers it with the user's cookies).

@@ -1,5 +1,7 @@
 ### ADR-052 — Audit model: three-tier
 
+> **Status:** Ratified
+
 **Context**: The ADRs define `createdBy`/`lastSeenAt` but no unified audit
 model. For a tool that curates an asset graph, "who changed what and when" is
 a real operational + compliance need.

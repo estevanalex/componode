@@ -1,5 +1,7 @@
 ### ADR-019 — Hierarchy authoring: manual for v1
 
+> **Status:** Ratified
+
 **Context**: Importers populate components; the product hierarchy is the
 high-value, high-judgment layer.
 

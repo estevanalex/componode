@@ -1,5 +1,7 @@
 ### ADR-091 — No secrets in commits
 
+> **Status:** Ratified
+
 **Context**: A committed secret is permanently in git history. For an
 open-source project on GitHub, a committed AWS key is scraped by bots and
 used for cryptomining within minutes.

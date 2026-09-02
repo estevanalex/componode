@@ -1,5 +1,7 @@
 ### ADR-038 — Importer run resume strategy
 
+> **Status:** Ratified
+
 **Context**: [ADR-037](./ADR-037-importer-run-commit-strategy.md)'s incremental commits enable resume. But "where it left
 off" needs a precise definition given importers are non-deterministic
 generators.

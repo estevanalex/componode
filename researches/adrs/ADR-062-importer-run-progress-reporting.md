@@ -1,5 +1,7 @@
 ### ADR-062 — Importer run progress reporting
 
+> **Status:** Ratified
+
 **Context**: [ADR-060](./ADR-060-importer-run-coordination.md)'s poll returns status. But status alone doesn't tell the
 user *where* the run is.
 

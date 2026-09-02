@@ -1,5 +1,7 @@
 ### ADR-026 — v1 importer scope: 7 importers
 
+> **Status:** Ratified
+
 **Context**: Shipping all listed providers in v1 is unrealistic. OSS importer
 ecosystems ship a credible starter set and contributors add the rest.
 
@@ -20,6 +22,3 @@ the importer interface documented and GitHub/AWS as reference templates.
 ones that prove the pattern. The contributor template + "good first issue"
 label closes the gap faster than writing all of them ourselves.
 
----
-
-## Auth & Security

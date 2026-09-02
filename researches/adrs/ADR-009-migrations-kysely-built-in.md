@@ -1,5 +1,7 @@
 ### ADR-009 — Migrations: Kysely built-in
 
+> **Status:** Ratified
+
 **Context**: Kysely has no built-in migrations tool of its own; a migration
 runner is needed.
 

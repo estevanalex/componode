@@ -1,5 +1,7 @@
 ### ADR-036 — Two-phase reconciliation scope
 
+> **Status:** Ratified
+
 **Context**: Q35's orphan logic needs a scope boundary — what set of existing
 rows do we compare the current yield against?
 

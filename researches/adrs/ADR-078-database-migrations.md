@@ -1,5 +1,7 @@
 ### ADR-078 — Database migrations
 
+> **Status:** Ratified
+
 **Context**: [ADR-009](./ADR-009-migrations-kysely-built-in.md) chose Kysely's built-in migrations. Where do migration
 files live and how are enum values handled?
 

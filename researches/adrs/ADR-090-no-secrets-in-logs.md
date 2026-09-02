@@ -1,5 +1,7 @@
 ### ADR-090 — No secrets in logs
 
+> **Status:** Ratified
+
 **Context**: Pino is structured logging (JSON) — every field in the
 metadata object is persisted. A `log.info({ secrets }, "importer starting")`
 would write all resolved secrets to the log file in plaintext.

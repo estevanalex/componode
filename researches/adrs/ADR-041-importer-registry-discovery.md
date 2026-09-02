@@ -1,5 +1,7 @@
 ### ADR-041 — Importer registry discovery
 
+> **Status:** Ratified
+
 **Context**: [ADR-024](./ADR-024-importer-registry-in-tree-code-registered.md) says "auto-discovered at boot via a registry" but doesn't
 specify the mechanism.
 

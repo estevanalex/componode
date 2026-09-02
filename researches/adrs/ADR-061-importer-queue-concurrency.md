@@ -1,5 +1,7 @@
 ### ADR-061 — Importer queue concurrency
 
+> **Status:** Ratified
+
 **Context**: [ADR-060](./ADR-060-importer-run-coordination.md) established a bounded queue. What is the concurrency
 limit?
 

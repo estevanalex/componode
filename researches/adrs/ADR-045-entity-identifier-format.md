@@ -1,5 +1,7 @@
 ### ADR-045 — Entity identifier format
 
+> **Status:** Ratified
+
 **Context**: AGENTS.md says "UUID v7 or ULID" — an unresolved either/or.
 
 **Decision**: **UUID v7, stored as native Postgres `uuid`.** 48-bit

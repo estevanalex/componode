@@ -1,5 +1,7 @@
 ### ADR-096 — Error responses must not leak internals
 
+> **Status:** Ratified
+
 **Context**: A raw error response (`500: TypeError at /app/packages/
 backend/src/services/...:42`) leaks the tech stack, file structure, and
 code flow to an attacker.

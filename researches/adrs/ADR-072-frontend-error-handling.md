@@ -1,5 +1,7 @@
 ### ADR-072 — Frontend error handling
 
+> **Status:** Ratified
+
 **Context**: [ADR-071](./ADR-071-api-error-response-format.md) defined the error format. How does the frontend consume
 it?
 

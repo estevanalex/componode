@@ -1,5 +1,7 @@
 ### ADR-082 — ComponentGroup (v1 inclusion)
 
+> **Status:** Ratified
+
 **Context**: Principle IV originally deferred human-declared component
 aliasing (Case B — three distinct source assets considered one logical
 component) to v1.1. The user noted Case B "happens quite often."

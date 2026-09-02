@@ -1,5 +1,7 @@
 ### ADR-042 — Frontend importer schema delivery
 
+> **Status:** Ratified
+
 **Context**: The frontend needs to render the "Add importer config" UI from
 each importer's config schema.
 

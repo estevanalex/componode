@@ -1,5 +1,7 @@
 ### ADR-080 — Pagination strategy
 
+> **Status:** Ratified
+
 **Context**: List endpoints need pagination. A deployer with 50,000 components
 needs it.
 

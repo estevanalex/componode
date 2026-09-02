@@ -1,5 +1,7 @@
 ### ADR-097 — Rate limiting
 
+> **Status:** Ratified
+
 **Context**: Without rate limiting, a single user or compromised session
 can DoS the backend or Postgres. Importer triggers are a specific DoS
 vector.

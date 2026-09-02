@@ -1,5 +1,7 @@
 ### ADR-027 — Authentication: built-in local + optional OIDC
 
+> **Status:** Ratified
+
 **Context**: Authentication is non-negotiable. The prior project had full RBAC
 + server-side sessions. Deployers may or may not have an external IdP.
 

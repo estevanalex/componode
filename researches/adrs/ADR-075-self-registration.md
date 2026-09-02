@@ -1,5 +1,7 @@
 ### ADR-075 — Self-registration
 
+> **Status:** Ratified
+
 **Context**: [ADR-027](./ADR-027-authentication-built-in-local-optional-oidc.md) defines local auth. Can users self-register?
 
 **Decision**: **`allowSelfRegistration` flag (default `false`, secure-by-

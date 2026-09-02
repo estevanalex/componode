@@ -1,5 +1,7 @@
 ### ADR-055 — Importer secret resolution
 
+> **Status:** Ratified
+
 **Context**: [ADR-023](./ADR-023-importer-credentials-external-secret-stores.md) defines a `SecretResolver` interface. [ADR-025](./ADR-025-importer-interface-pull-only-asyncgenerator.md)'s signature
 passes `secretResolver` to the importer. Q23 decided the importer receives
 pre-resolved secrets, not a resolver. These are inconsistent.

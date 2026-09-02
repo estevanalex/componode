@@ -1,5 +1,7 @@
 ### ADR-068 — OpenTelemetry tracing integration
 
+> **Status:** Ratified
+
 **Context**: [ADR-032](./ADR-032-observability-full.md) mandates OTel. How do importers participate?
 
 **Decision**: **Run-level span always created by core + abstracted `Tracer`/

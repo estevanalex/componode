@@ -1,5 +1,7 @@
 ### ADR-016 — Component→Component relationships
 
+> **Status:** Ratified
+
 **Context**: Components relate to each other in multiple ways (shared
 dependencies, code provenance, API exposure).
 

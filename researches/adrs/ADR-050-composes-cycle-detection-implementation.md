@@ -1,5 +1,7 @@
 ### ADR-050 — COMPOSES cycle detection implementation
 
+> **Status:** Ratified
+
 **Context**: [ADR-049](./ADR-049-composes-hierarchy-dag-with-unlimited-depth.md) mandates write-time cycle detection. How is it
 implemented?
 

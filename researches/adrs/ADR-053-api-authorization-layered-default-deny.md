@@ -1,5 +1,7 @@
 ### ADR-053 — API authorization: layered default-deny
 
+> **Status:** Ratified
+
 **Context**: [ADR-027](./ADR-027-authentication-built-in-local-optional-oidc.md) defines RBAC. How are routes enforced?
 
 **Decision**: **Global default-deny `preHandler` with route-pattern RBAC map

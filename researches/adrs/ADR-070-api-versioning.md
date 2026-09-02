@@ -1,5 +1,7 @@
 ### ADR-070 — API versioning
 
+> **Status:** Ratified
+
 **Context**: The ADRs don't specify API versioning.
 
 **Decision**: **`/api/v1/...` prefix on all routes from day one.** The

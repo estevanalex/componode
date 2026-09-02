@@ -1,5 +1,7 @@
 ### ADR-030 — Documentation: README + docs/ folder, Markdown only
 
+> **Status:** Ratified
+
 **Context**: For an OSS project, docs are the product.
 
 **Decision**: **README + `docs/` folder, Markdown only.** Priority docs:

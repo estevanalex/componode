@@ -1,5 +1,7 @@
 ### ADR-089 — Security headers
 
+> **Status:** Ratified
+
 **Context**: Without security headers, the application is vulnerable to
 MIME sniffing, clickjacking, downgrade attacks, and resource injection.
 

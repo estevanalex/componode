@@ -1,5 +1,7 @@
 ### ADR-102 — Content injection in JSONB fields
 
+> **Status:** Ratified
+
 **Context**: Importers yield arbitrary data in `Component.details` and
 `ComponentInstance.rawConfig`. A malicious external source could yield
 `details: {"xss": "<img src=x onerror=alert(1)>"}` or `rawConfig: {"url":
