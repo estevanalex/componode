@@ -62,7 +62,14 @@ export async function updateOidcConfig(input: UpdateOidcConfigInput) {
   const now = new Date().toISOString();
 
   // Validate issuer discovery if OIDC is being enabled
-  if (input.enabled && input.issuer) {
+  if (input.enabled) {
+    if (!input.issuer) {
+      throw Object.assign(new Error("OIDC issuer is required when enabled"), {
+        statusCode: 422,
+        code: "OIDC_DISCOVERY_FAILED",
+      });
+    }
+    input.issuer = input.issuer.replace(/\/+$/, "");
     try {
       const discoveryUrl = input.issuer.replace(/\/$/, "") + "/.well-known/openid-configuration";
       const response = await fetch(discoveryUrl, { signal: AbortSignal.timeout(5000) });

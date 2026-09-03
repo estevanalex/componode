@@ -7,6 +7,7 @@ import { DashboardPage } from "@/pages/dashboard";
 import { ProductsPage } from "@/pages/products";
 import { ComponentsPage } from "@/pages/components";
 import { ImportersPage } from "@/pages/importers";
+import { ImporterRunPage } from "@/pages/importer-run";
 import { UsersPage } from "@/pages/users";
 import { SettingsPage } from "@/pages/settings";
 import { SessionsPage } from "@/pages/sessions";
@@ -45,6 +46,14 @@ export const routes: RouteObject[] = [
     element: (
       <AuthGuard>
         <ImportersPage />
+      </AuthGuard>
+    ),
+  },
+  {
+    path: "/importers/:configId/runs/:runId",
+    element: (
+      <AuthGuard>
+        <ImporterRunPage />
       </AuthGuard>
     ),
   },

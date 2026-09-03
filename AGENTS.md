@@ -119,6 +119,33 @@ require a new grilling session or an explicit superseding ADR.
 
 ---
 
+## Spec-kit workflow (REQUIRED)
+
+All feature work in this repository MUST follow the spec-kit workflow. The
+Devin planning phase (e.g. `.devin/plans/...` drafts) must be inserted into the
+`speckit-plan` step and published as `specs/{NNN-feature-name}/plan.md` before
+implementation begins.
+
+The required sequence is:
+
+1. **`speckit-specify`** — create/update `specs/{NNN-feature-name}/spec.md`
+   from the feature description.
+2. **`speckit-plan`** — produce `specs/{NNN-feature-name}/plan.md` (and
+   optionally `data-model.md`, `research.md`, `contracts/`, `quickstart.md`).
+   The Devin mega-plan belongs in this step.
+3. **`speckit-tasks`** — generate `specs/{NNN-feature-name}/tasks.md` from the
+   spec and plan.
+4. **`speckit-implement`** — execute `tasks.md` phase by phase.
+5. **`speckit-analyze` / `speckit-converge`** — optional but recommended before
+   merge to check consistency and close gaps.
+
+Do not implement code ad-hoc from `.devin/plans`, one-off notes, or temporary
+locations. Always implement from the generated `tasks.md` artifacts under
+`specs/{NNN-feature-name}/`. The `specs/` directory is the authoritative source
+of truth for the current milestone.
+
+---
+
 ## Technical Rules and Guidance
 
 These rules are binding for all runtime code. Violations are bugs, not style

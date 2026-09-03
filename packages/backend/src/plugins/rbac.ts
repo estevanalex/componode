@@ -13,6 +13,12 @@ const PERMISSIONS: Record<string, Role> = {
   "settings:update": "ADMIN",
   "oidc:configure": "ADMIN",
   "password:reset:generate": "ADMIN",
+  // Importer actions
+  "importer:config:create": "ADMIN",
+  "importer:config:update": "ADMIN",
+  "importer:config:delete": "ADMIN",
+  "importer:run:trigger": "EDITOR",
+  "importer:run:cancel": "EDITOR",
   // Editor actions (not in foundation, but defined for future)
   // Viewer = read-only (default for all GET routes)
 };

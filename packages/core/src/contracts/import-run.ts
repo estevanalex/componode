@@ -12,6 +12,8 @@ export interface ImportRun {
   assetsUpdated: number;
   instancesOrphaned: number;
   componentsRetired: number;
+  currentPhase?: string | null;
+  cancelRequestedAt?: string | null;
   errorMessage?: string | null;
   errorStack?: string | null;
   errorType?: string | null;

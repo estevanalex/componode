@@ -24,7 +24,7 @@ const redactPaths = [
   "*.authorization",
 ];
 
-export const logger = pino({
+export const loggerOptions = {
   level: logLevel,
   redact: {
     paths: redactPaths,
@@ -34,7 +34,9 @@ export const logger = pino({
     process.env.NODE_ENV === "development"
       ? { target: "pino-pretty", options: { colorize: true } }
       : undefined,
-});
+};
+
+export const logger = pino(loggerOptions);
 
 export async function loggingPlugin(app: FastifyInstance): Promise<void> {
   app.decorate("logger", logger);

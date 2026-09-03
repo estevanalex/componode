@@ -2,9 +2,8 @@ export interface ImporterConfig {
   id: string;
   importerName: string;
   label: string;
-  config: Record<string, unknown>;
-  secretRefs?: Record<string, string> | null;
-  scope?: Record<string, unknown> | null;
+  scope: Record<string, unknown>;
+  secretRefs?: Array<{ key: string; env?: string; file?: string }> | null;
   schedule?: string | null;
   enabled: boolean;
   createdBy?: string | null;

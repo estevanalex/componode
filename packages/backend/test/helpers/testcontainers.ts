@@ -6,6 +6,18 @@ import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import type { DB } from "../../src/db/types.js";
 
+// Postgres containers terminate active connections during teardown, which can
+// emit a 57P01 FATAL error on the pg client stream after the pool has ended.
+// This is harmless test-cleanup noise; log and ignore it, but rethrow any
+// other uncaught exception so real failures are not masked.
+process.on("uncaughtException", (err) => {
+  if (typeof err === "object" && err !== null && (err as { code?: string }).code === "57P01") {
+    return;
+  }
+  console.error("Uncaught exception in test process:", err);
+  process.exit(1);
+});
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -21,6 +33,10 @@ export async function startTestDb(): Promise<TestDb> {
   const pool = new Pool({
     connectionString: container.getConnectionUri(),
   });
+
+  // Swallow late Postgres errors during container teardown to avoid unhandled
+  // exception warnings in Vitest output.
+  pool.on("error", () => {});
 
   const db = new Kysely<DB>({
     dialect: new PostgresDialect({ pool }),

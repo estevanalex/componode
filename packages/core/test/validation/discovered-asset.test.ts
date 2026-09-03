@@ -2,15 +2,17 @@ import { describe, it, expect } from "vitest";
 import { validateDiscoveredAsset } from "../../src/validation/discovered-asset.js";
 
 const baseAsset = {
-  category: "COMPUTE" as const,
-  provider: "AWS" as const,
-  resourceType: "ec2:instance",
-  name: "Web Server",
-  externalId: "arn:aws:ec2:us-east-1:123:instance/i-123",
-  environments: [
+  category: "REPOSITORY" as const,
+  provider: "GITHUB" as const,
+  resourceType: "github:repository",
+  name: "org/repo",
+  externalId: "org/repo",
+  slug: "repo",
+  instances: [
     {
       environment: "PRODUCTION" as const,
-      externalId: "i-123-prod",
+      externalId: "main",
+      deployedAt: "2024-01-01T00:00:00Z",
     },
   ],
   details: null,
@@ -25,7 +27,7 @@ describe("validateDiscoveredAsset", () => {
     expect(
       validateDiscoveredAsset({
         ...baseAsset,
-        environments: [{ environment: "PRODUCTION" }],
+        instances: [{ environment: "PRODUCTION" }],
       }),
     ).toBe(false);
   });
@@ -34,7 +36,7 @@ describe("validateDiscoveredAsset", () => {
     expect(
       validateDiscoveredAsset({
         ...baseAsset,
-        environments: [{ environment: "PRODUCTION", externalId: "" }],
+        instances: [{ environment: "PRODUCTION", externalId: "" }],
       }),
     ).toBe(false);
   });
@@ -43,8 +45,35 @@ describe("validateDiscoveredAsset", () => {
     expect(
       validateDiscoveredAsset({
         ...baseAsset,
-        environments: [{ environment: "PRODUCTION", externalId: null }],
+        instances: [{ environment: "PRODUCTION", externalId: null }],
       }),
     ).toBe(false);
+  });
+
+  it("accepts an asset without an optional slug", () => {
+    const { slug, ...withoutSlug } = baseAsset;
+    expect(validateDiscoveredAsset(withoutSlug)).toBe(true);
+  });
+
+  it("rejects an unknown category", () => {
+    expect(
+      validateDiscoveredAsset({
+        ...baseAsset,
+        category: "UNKNOWN_CATEGORY",
+      }),
+    ).toBe(false);
+  });
+
+  it("rejects an unknown provider", () => {
+    expect(
+      validateDiscoveredAsset({
+        ...baseAsset,
+        provider: "UNKNOWN_PROVIDER",
+      }),
+    ).toBe(false);
+  });
+
+  it("rejects a missing instances array", () => {
+    expect(validateDiscoveredAsset({ ...baseAsset, instances: undefined })).toBe(false);
   });
 });

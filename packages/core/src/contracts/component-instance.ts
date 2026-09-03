@@ -11,6 +11,9 @@ export interface ComponentInstance {
   deployedAt?: string | null;
   rawConfig?: Record<string, unknown> | null;
   externalId: string;
+  slug: string;
+  lastSeenAt?: string | null;
+  lastSeenInRunId?: string | null;
   createdBy?: string | null;
   updatedBy?: string | null;
   createdAt: string;

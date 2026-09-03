@@ -16,10 +16,12 @@ export async function errorHandler(app: FastifyInstance): Promise<void> {
     }
 
     // Rate limit errors
-    if (err.statusCode === 429) {
+    if (err.statusCode === 429 || err.code === "AUTH_RATE_LIMITED") {
+      const details = (err as { details?: { retryAfter?: number } }).details;
       return reply.status(429).send({
         code: "AUTH_RATE_LIMITED",
-        message: "Too many requests. Please try again later.",
+        message: err.message || "Too many requests. Please try again later.",
+        details: details ? { retryAfter: details.retryAfter } : undefined,
       });
     }
 
@@ -49,6 +51,20 @@ export async function errorHandler(app: FastifyInstance): Promise<void> {
       return reply.status(409).send({
         code: err.code ?? "CONFLICT",
         message: err.message || "Conflict",
+      });
+    }
+
+    if (err.statusCode === 422) {
+      return reply.status(422).send({
+        code: err.code ?? "VALIDATION_FAILED",
+        message: err.message || "Unprocessable entity",
+      });
+    }
+
+    if (err.statusCode === 503) {
+      return reply.status(503).send({
+        code: err.code ?? "SERVICE_UNAVAILABLE",
+        message: err.message || "Service unavailable",
       });
     }
 
