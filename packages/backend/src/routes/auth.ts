@@ -26,7 +26,9 @@ declare module "fastify" {
 
 export async function authRoutes(app: FastifyInstance): Promise<void> {
   // POST /auth/login
-  app.post("/auth/login", async (req: FastifyRequest, reply: FastifyReply) => {
+  app.post("/auth/login", {
+    config: { rateLimit: { max: 5, timeWindow: "1 minute" } },
+  }, async (req: FastifyRequest, reply: FastifyReply) => {
     const parsed = loginSchema.safeParse(req.body);
     if (!parsed.success) {
       return reply.status(400).send({
@@ -151,7 +153,9 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // POST /auth/register — public self-registration (only if allowSelfRegistration is enabled)
-  app.post("/auth/register", async (req: FastifyRequest, reply: FastifyReply) => {
+  app.post("/auth/register", {
+    config: { rateLimit: { max: 3, timeWindow: "1 minute" } },
+  }, async (req: FastifyRequest, reply: FastifyReply) => {
     // Check if self-registration is enabled
     const settingsRow = await db
       .selectFrom("app_settings")
@@ -259,8 +263,13 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       return reply.status(302).redirect(`${redirectUri}?csrf=${csrfToken}`);
     } catch (err) {
       const error = err as { statusCode?: number; code?: string; message?: string };
+      const status = error.statusCode ?? 400;
       const code = error.code ?? "OIDC_INVALID_CODE";
-      return reply.status(302).redirect(`/login?error=${code.toLowerCase()}`);
+      const message = error.message ?? "OIDC callback failed";
+      if (status === 302) {
+        return reply.status(302).redirect(`/login?error=${code.toLowerCase()}`);
+      }
+      return reply.status(status).send({ code, message });
     }
   });
 }

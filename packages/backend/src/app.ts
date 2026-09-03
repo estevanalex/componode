@@ -1,10 +1,10 @@
-import Fastify, { type FastifyInstance } from "fastify";
+import Fastify, { type FastifyInstance, type FastifyLoggerOptions } from "fastify";
 import cookie from "@fastify/cookie";
 import staticPlugin from "@fastify/static";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { errorHandler } from "./plugins/error-handler.js";
-import { logger } from "./plugins/logging.js";
+import { loggerOptions } from "./plugins/logging.js";
 import { helmetPlugin } from "./plugins/helmet.js";
 import { rateLimitPlugin } from "./plugins/rate-limit.js";
 import { corsPlugin } from "./plugins/cors.js";
@@ -18,13 +18,16 @@ import { metricsRoutes } from "./routes/metrics.js";
 import { userRoutes } from "./routes/users.js";
 import { settingsRoutes } from "./routes/settings.js";
 import { sessionRoutes } from "./routes/sessions.js";
+import { importerRoutes } from "./routes/importers.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
-    logger: logger,
+    // Pass Pino options so Fastify creates a compatible internal logger.
+    // The exported `logger` instance is used by services outside of Fastify.
+    logger: loggerOptions as unknown as FastifyLoggerOptions,
     trustProxy: true,
     bodyLimit: 1024 * 1024, // 1MB max request body (FR-022)
   });
@@ -56,6 +59,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(userRoutes, { prefix: "/api/v1" });
   await app.register(settingsRoutes, { prefix: "/api/v1" });
   await app.register(sessionRoutes, { prefix: "/api/v1" });
+  await app.register(importerRoutes, { prefix: "/api/v1" });
 
   // Metrics endpoint — unauthenticated, no prefix (ADR-069)
   await app.register(metricsRoutes);

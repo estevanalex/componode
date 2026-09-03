@@ -211,7 +211,7 @@ export async function handleCallback(code: string, state: string): Promise<{ ses
 
 async function resolveSecret(ref: string): Promise<string> {
   const resolver = new EnvSecretResolver();
-  return resolver.resolve(ref);
+  return resolver.resolve({ key: "clientSecret", env: ref });
 }
 
 function decodeJwtPayload(jwt: string): IdTokenClaims {

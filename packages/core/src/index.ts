@@ -35,7 +35,7 @@ export type { OidcConfig } from "./contracts/oidc-config.js";
 export type { AppSettings } from "./contracts/app-settings.js";
 export type { PasswordResetToken } from "./contracts/password-reset-token.js";
 export type { EntityChange, EdgeChange } from "./contracts/audit.js";
-export type { DiscoveredAsset, DiscoveredAssetEnvironment } from "./contracts/discovered-asset.js";
+export type { DiscoveredAsset, DiscoveredAssetInstance, DiscoveredAssetEnvironment } from "./contracts/discovered-asset.js";
 export type { Importer, ImporterContext, SecretResolver } from "./contracts/importer.js";
 
 // Observability
@@ -54,6 +54,10 @@ export {
 } from "./schemas/auth.js";
 export { createUserSchema, updateUserSchema } from "./schemas/user.js";
 export { updateSettingsSchema, updateOidcConfigSchema } from "./schemas/settings.js";
+export {
+  createImporterConfigSchema,
+  updateImporterConfigSchema,
+} from "./schemas/importer-config.js";
 export type {
   LoginInput,
   RegisterInput,
@@ -63,6 +67,10 @@ export type {
 } from "./schemas/auth.js";
 export type { CreateUserInput, UpdateUserInput } from "./schemas/user.js";
 export type { UpdateSettingsInput, UpdateOidcConfigInput } from "./schemas/settings.js";
+export type {
+  CreateImporterConfigInput,
+  UpdateImporterConfigInput,
+} from "./schemas/importer-config.js";
 
 // Validation
 export { validateDiscoveredAsset, validateDiscoveredAssetDetailed } from "./validation/discovered-asset.js";

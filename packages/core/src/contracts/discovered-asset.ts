@@ -1,11 +1,12 @@
 import type { ComponentCategory, ComponentProvider, Environment, InstanceStatus } from "../constants/index.js";
 
-export interface DiscoveredAssetEnvironment {
+export interface DiscoveredAssetInstance {
   environment: Environment;
   url?: string | null;
   region?: string | null;
   status?: InstanceStatus | null;
   version?: string | null;
+  deployedAt?: string | null;
   externalId: string;
   rawConfig?: Record<string, unknown> | null;
 }
@@ -16,9 +17,13 @@ export interface DiscoveredAsset {
   resourceType: string;
   name: string;
   externalId: string;
-  environments: DiscoveredAssetEnvironment[];
+  slug?: string;
+  instances: DiscoveredAssetInstance[];
   details?: Record<string, unknown> | null;
-  // NOTE: relationships[] is NOT part of v1 contract (ADR-030, Constitution Principle V)
-  // Importer-declared product edges are v2. Component-to-component edges (DEPENDS_ON,
-  // SOURCES_FROM, EXPOSES) are reserved for v2 per ADR-030.
+  // NOTE: relationships[] is NOT part of the v1 contract (ADR-057, Constitution Principle V).
+  // Importer-declared product edges are a v2 feature. Component-to-component edges
+  // (DEPENDS_ON, SOURCES_FROM, EXPOSES) are reserved for v2 per ADR-019 and ADR-057.
 }
+
+// Backward-compatible alias for consumers still referencing the old name
+export type DiscoveredAssetEnvironment = DiscoveredAssetInstance;

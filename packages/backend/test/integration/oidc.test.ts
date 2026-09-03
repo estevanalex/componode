@@ -9,13 +9,35 @@ import {
 
 const ADMIN_USERNAME = "admin";
 const ADMIN_PASSWORD = "AdminPassword123!";
+const ISSUER = "https://idp.example.com";
 
-/**
- * NOTE (TDD): The OIDC login/callback service is not yet fully implemented.
- * These tests describe the intended behaviour and are expected to fail until
- * the OIDC routes (`/auth/oidc/login`, `/auth/oidc/callback`) and JIT
- * provisioning are implemented.
- */
+function makeIdToken(claims: Record<string, unknown>): string {
+  const header = Buffer.from(JSON.stringify({ alg: "none", typ: "JWT" })).toString("base64url");
+  const payload = Buffer.from(JSON.stringify(claims)).toString("base64url");
+  return `${header}.${payload}.`;
+}
+
+function discoveryResponse() {
+  return new Response(
+    JSON.stringify({
+      issuer: ISSUER,
+      authorization_endpoint: `${ISSUER}/authorize`,
+      token_endpoint: `${ISSUER}/oauth/token`,
+    }),
+    { status: 200, headers: { "Content-Type": "application/json" } },
+  );
+}
+
+function tokenResponse(claims: Record<string, unknown>) {
+  return new Response(
+    JSON.stringify({
+      id_token: makeIdToken(claims),
+      access_token: "mock-access-token",
+    }),
+    { status: 200, headers: { "Content-Type": "application/json" } },
+  );
+}
+
 describe("OIDC", () => {
   let testDb: TestDb | null = null;
   let app: any;
@@ -24,19 +46,53 @@ describe("OIDC", () => {
   let originalNodeEnv: string | undefined;
   let originalBootstrapUsername: string | undefined;
   let originalBootstrapPassword: string | undefined;
+  let originalClientSecret: string | undefined;
+  let fetchSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(async () => {
     originalDbUrl = process.env.DATABASE_URL;
     originalNodeEnv = process.env.NODE_ENV;
     originalBootstrapUsername = process.env.BOOTSTRAP_ADMIN_USERNAME;
     originalBootstrapPassword = process.env.BOOTSTRAP_ADMIN_PASSWORD;
+    originalClientSecret = process.env.MOCK_CLIENT_SECRET;
 
     testDb = await startTestDb();
     process.env.DATABASE_URL = testDb.container.getConnectionUri();
     process.env.NODE_ENV = "test";
     process.env.BOOTSTRAP_ADMIN_USERNAME = ADMIN_USERNAME;
     process.env.BOOTSTRAP_ADMIN_PASSWORD = ADMIN_PASSWORD;
+    process.env.MOCK_CLIENT_SECRET = "mock-client-secret";
     vi.resetModules();
+
+    fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = new URL(String(input));
+      if (url.pathname === "/.well-known/openid-configuration") {
+        return discoveryResponse();
+      }
+      if (url.pathname === "/oauth/token") {
+        const bodyText = init?.body ? String(init.body) : "";
+        const body = new URLSearchParams(bodyText);
+        const code = body.get("code");
+        if (code === "invalid-code") {
+          return new Response("Unauthorized", { status: 401 });
+        }
+        if (code === "mock-code-new-user") {
+          return tokenResponse({
+            sub: "new-oidc-sub",
+            preferred_username: "newoidcuser",
+            email: "new@example.com",
+            name: "New OIDC User",
+          });
+        }
+        return tokenResponse({
+          sub: "existing-oidc-sub",
+          preferred_username: "oidcuser",
+          email: "oidc@example.com",
+          name: "OIDC User",
+        });
+      }
+      return new Response("Not Found", { status: 404 });
+    });
 
     const { bootstrapAdmin } = await import("../../src/services/bootstrap-service.js");
     await bootstrapAdmin();
@@ -49,6 +105,7 @@ describe("OIDC", () => {
   });
 
   afterEach(async () => {
+    fetchSpy?.mockRestore();
     if (app) await app.close();
     if (testDb) await testDb.cleanup();
     if (originalDbUrl !== undefined) process.env.DATABASE_URL = originalDbUrl;
@@ -59,10 +116,12 @@ describe("OIDC", () => {
     else delete process.env.BOOTSTRAP_ADMIN_USERNAME;
     if (originalBootstrapPassword !== undefined) process.env.BOOTSTRAP_ADMIN_PASSWORD = originalBootstrapPassword;
     else delete process.env.BOOTSTRAP_ADMIN_PASSWORD;
+    if (originalClientSecret !== undefined) process.env.MOCK_CLIENT_SECRET = originalClientSecret;
+    else delete process.env.MOCK_CLIENT_SECRET;
     vi.resetModules();
   });
 
-  it("admin configures OIDC via PUT /api/v1/settings/oidc → 200", async () => {
+  async function configureOidc(overrides: Record<string, unknown> = {}): Promise<unknown> {
     const res = await app.inject({
       method: "PUT",
       url: "/api/v1/settings/oidc",
@@ -70,37 +129,51 @@ describe("OIDC", () => {
       headers: csrfHeader,
       payload: {
         enabled: true,
-        issuer: "https://idp.example.com",
+        issuer: ISSUER,
         clientId: "componode-client",
-        clientSecretRef: "oidc/clientSecret",
+        clientSecretRef: "MOCK_CLIENT_SECRET",
         roleClaimPath: "groups",
         claimValueField: "name",
         roleMapping: { "componode-admins": "ADMIN" },
+        ...overrides,
       },
     });
-
     expect(res.statusCode).toBe(200);
-    const body = res.json();
-    expect(body.oidcConfig.enabled).toBe(true);
-    expect(body.oidcConfig.issuer).toBe("https://idp.example.com");
-  });
+    return res.json();
+  }
 
-  it("initiates OIDC login via POST /auth/oidc/login → 302 redirect", async () => {
+  async function initiateLogin(): Promise<string> {
     const res = await app.inject({
       method: "POST",
-      url: "/auth/oidc/login",
+      url: "/api/v1/auth/oidc/login",
+      cookies: csrfCookie,
+      headers: csrfHeader,
     });
-
     expect(res.statusCode).toBe(302);
     const location = res.headers["location"];
     expect(typeof location).toBe("string");
-    expect(location as string).toMatch(/https?:\/\//);
+    return new URL(location as string).searchParams.get("state") ?? "";
+  }
+
+  it("admin configures OIDC via PUT /api/v1/settings/oidc → 200", async () => {
+    const body = await configureOidc();
+    expect(body.oidcConfig.enabled).toBe(true);
+    expect(body.oidcConfig.issuer).toBe(ISSUER);
+  });
+
+  it("initiates OIDC login via POST /auth/oidc/login → 302 redirect", async () => {
+    await configureOidc();
+    const state = await initiateLogin();
+    expect(state).toBeTruthy();
   });
 
   it("callback with a mock code+state returns 302 and sets a session cookie", async () => {
+    await configureOidc();
+    const state = await initiateLogin();
+
     const res = await app.inject({
       method: "GET",
-      url: "/auth/oidc/callback?code=mock-code&state=mock-state",
+      url: `/api/v1/auth/oidc/callback?code=mock-code&state=${state}`,
     });
 
     expect(res.statusCode).toBe(302);
@@ -110,34 +183,36 @@ describe("OIDC", () => {
   });
 
   it("JIT-provisions a new oidcSubject as a Viewer user", async () => {
+    await configureOidc();
+    const state = await initiateLogin();
+
     const res = await app.inject({
       method: "GET",
-      url: "/auth/oidc/callback?code=mock-code-new-user&state=mock-state",
+      url: `/api/v1/auth/oidc/callback?code=mock-code-new-user&state=${state}`,
     });
     expect(res.statusCode).toBe(302);
 
-    // After a successful callback for a brand-new oidcSubject, a person row
-    // with role VIEWER should exist.
     const persons = await testDb!.db
       .selectFrom("persons")
       .select(["persons.id", "persons.oidcSubject", "persons.role"])
       .where("persons.oidcSubject", "is not", null)
       .execute();
-    const jitUser = persons.find((p) => p.oidcSubject !== null);
+    const jitUser = persons.find((p) => p.oidcSubject === "new-oidc-sub");
     expect(jitUser).toBeDefined();
     expect(jitUser!.role).toBe("VIEWER");
   });
 
   it("callback with invalid state → 400", async () => {
+    await configureOidc();
     const res = await app.inject({
       method: "GET",
-      url: "/auth/oidc/callback?code=mock-code&state=bad-state",
+      url: "/api/v1/auth/oidc/callback?code=mock-code&state=bad-state",
     });
     expect(res.statusCode).toBe(400);
   });
 
   it("OIDC login when disabled → 503", async () => {
-    // Disable OIDC first
+    await configureOidc();
     await app.inject({
       method: "PUT",
       url: "/api/v1/settings/oidc",
@@ -148,15 +223,20 @@ describe("OIDC", () => {
 
     const res = await app.inject({
       method: "POST",
-      url: "/auth/oidc/login",
+      url: "/api/v1/auth/oidc/login",
+      cookies: csrfCookie,
+      headers: csrfHeader,
     });
     expect(res.statusCode).toBe(503);
   });
 
   it("callback with an invalid code → 400", async () => {
+    await configureOidc();
+    const state = await initiateLogin();
+
     const res = await app.inject({
       method: "GET",
-      url: "/auth/oidc/callback?code=invalid-code&state=mock-state",
+      url: `/api/v1/auth/oidc/callback?code=invalid-code&state=${state}`,
     });
     expect(res.statusCode).toBe(400);
   });

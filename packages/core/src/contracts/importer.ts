@@ -7,13 +7,19 @@ export interface SecretResolver {
 }
 
 export interface ImporterContext {
+  runId: string;
   logger: Logger;
+  signal: AbortSignal;
+  reportPhase: (name: string) => void | Promise<void>;
   tracer?: Tracer;
-  secretResolver: SecretResolver;
 }
 
 export interface Importer {
   readonly name: string;
   readonly version: string;
-  run(config: Record<string, unknown>, context: ImporterContext): AsyncGenerator<DiscoveredAsset>;
+  run(
+    config: Record<string, unknown>,
+    secrets: Record<string, string>,
+    context: ImporterContext,
+  ): AsyncGenerator<DiscoveredAsset>;
 }

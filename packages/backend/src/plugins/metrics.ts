@@ -1,51 +1,106 @@
 import type { FastifyInstance } from "fastify";
 import promClient from "prom-client";
 
-const httpRequestsTotal = new promClient.Counter({
-  name: "http_requests_total",
-  help: "Total HTTP requests",
-  labelNames: ["method", "route", "status"] as const,
-});
+function getOrCreateCounter<T extends string>(
+  name: string,
+  help: string,
+  labelNames: T[],
+): promClient.Counter<T> {
+  const existing = promClient.register.getSingleMetric(name) as promClient.Counter<T> | undefined;
+  if (existing) return existing;
+  return new promClient.Counter({ name, help, labelNames });
+}
 
-const httpRequestDurationSeconds = new promClient.Histogram({
-  name: "http_request_duration_seconds",
-  help: "HTTP request duration",
-  labelNames: ["method", "route"] as const,
-  buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10],
-});
+function getOrCreateHistogram<T extends string>(
+  name: string,
+  help: string,
+  labelNames: T[],
+  buckets: number[],
+): promClient.Histogram<T> {
+  const existing = promClient.register.getSingleMetric(name) as promClient.Histogram<T> | undefined;
+  if (existing) return existing;
+  return new promClient.Histogram({ name, help, labelNames, buckets });
+}
 
-const authEventsTotal = new promClient.Counter({
-  name: "auth_events_total",
-  help: "Authentication events",
-  labelNames: ["event", "outcome"] as const,
-});
+function getOrCreateGauge<T extends string>(
+  name: string,
+  help: string,
+  labelNames?: T[],
+): promClient.Gauge<T> {
+  const existing = promClient.register.getSingleMetric(name) as promClient.Gauge<T> | undefined;
+  if (existing) return existing;
+  return new promClient.Gauge({ name, help, labelNames: labelNames ?? [] });
+}
 
-const dbPoolSize = new promClient.Gauge({
-  name: "db_pool_size",
-  help: "Database connection pool size",
-});
+const httpRequestsTotal = getOrCreateCounter(
+  "http_requests_total",
+  "Total HTTP requests",
+  ["method", "route", "status"],
+);
 
-const dbPoolAvailable = new promClient.Gauge({
-  name: "db_pool_available",
-  help: "Available database connections",
-});
+const httpRequestDurationSeconds = getOrCreateHistogram(
+  "http_request_duration_seconds",
+  "HTTP request duration",
+  ["method", "route"],
+  [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10],
+);
 
-const dbQueryDurationSeconds = new promClient.Histogram({
-  name: "db_query_duration_seconds",
-  help: "Database query duration",
-  labelNames: ["operation"] as const,
-  buckets: [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1],
-});
+const authEventsTotal = getOrCreateCounter(
+  "auth_events_total",
+  "Authentication events",
+  ["event", "outcome"],
+);
 
-const rateLimitEventsTotal = new promClient.Counter({
-  name: "rate_limit_events_total",
-  help: "Rate limit events",
-  labelNames: ["endpoint"] as const,
-});
+const dbPoolSize = getOrCreateGauge("db_pool_size", "Database connection pool size");
+const dbPoolAvailable = getOrCreateGauge(
+  "db_pool_available",
+  "Available database connections",
+);
 
-// Collect default Node.js metrics (event loop, GC, memory, CPU)
+const dbQueryDurationSeconds = getOrCreateHistogram(
+  "db_query_duration_seconds",
+  "Database query duration",
+  ["operation"],
+  [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1],
+);
+
+const rateLimitEventsTotal = getOrCreateCounter(
+  "rate_limit_events_total",
+  "Rate limit events",
+  ["endpoint"],
+);
+
+// Importer metrics
+const importRunsTotal = getOrCreateCounter(
+  "import_runs_total",
+  "Total importer runs",
+  ["importer", "status"],
+);
+
+const importRunDurationSeconds = getOrCreateHistogram(
+  "import_run_duration_seconds",
+  "Importer run duration",
+  ["importer"],
+  [0.1, 0.5, 1, 2.5, 5, 10, 30, 60, 120, 300],
+);
+
+const importRunAssetsYieldedTotal = getOrCreateCounter(
+  "import_run_assets_yielded_total",
+  "Total assets yielded by importer runs",
+  ["importer"],
+);
+
+const importRunErrorsTotal = getOrCreateCounter(
+  "import_run_errors_total",
+  "Total errors during importer runs",
+  ["importer", "errorType"],
+);
+
+// Collect default Node.js metrics (event loop, GC, memory, CPU) once per process.
 const collectDefaultMetrics = promClient.collectDefaultMetrics;
-collectDefaultMetrics();
+if (!promClient.register.getSingleMetric("process_cpu_user_seconds_total")) {
+  collectDefaultMetrics();
+}
 
 export const metrics = {
   httpRequestsTotal,
@@ -55,6 +110,10 @@ export const metrics = {
   dbPoolAvailable,
   dbQueryDurationSeconds,
   rateLimitEventsTotal,
+  importRunsTotal,
+  importRunDurationSeconds,
+  importRunAssetsYieldedTotal,
+  importRunErrorsTotal,
 };
 
 export async function metricsPlugin(app: FastifyInstance): Promise<void> {

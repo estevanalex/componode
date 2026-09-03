@@ -1,0 +1,317 @@
+import { useEffect, useId, useState, type FormEvent } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Select } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+import type { ImporterConfig, ImporterManifest } from "@/api/types";
+
+interface SecretRef {
+  key: string;
+  env?: string;
+  file?: string;
+}
+
+export interface ImporterConfigFormOutput {
+  importerName: string;
+  label: string;
+  scope: Record<string, unknown>;
+  secretRefs: SecretRef[];
+  schedule: string | null;
+  enabled: boolean;
+}
+
+interface ImporterConfigFormProps {
+  mode: "create" | "edit";
+  config?: ImporterConfig | null;
+  manifests: ImporterManifest[];
+  isPending: boolean;
+  onSubmit: (values: ImporterConfigFormOutput) => Promise<void>;
+  onCancel: () => void;
+}
+
+function errMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
+export function ImporterConfigForm({
+  mode,
+  config,
+  manifests,
+  isPending,
+  onSubmit,
+  onCancel,
+}: ImporterConfigFormProps) {
+  const [importerName, setImporterName] = useState(config?.importerName ?? "");
+  const [label, setLabel] = useState(config?.label ?? "");
+  const [schedule, setSchedule] = useState(config?.schedule ?? "");
+  const [enabled, setEnabled] = useState(config?.enabled ?? true);
+  const [error, setError] = useState<string | null>(null);
+
+  // GitHub scope fields
+  const [org, setOrg] = useState<string>("");
+  const [repos, setRepos] = useState<string>("");
+  const [includeForks, setIncludeForks] = useState<boolean>(false);
+  const [includeArchived, setIncludeArchived] = useState<boolean>(false);
+  const [token, setToken] = useState<string>("");
+
+  // Fallback JSON fields (for non-github importers until we have per-importer schema rendering)
+  const [scopeJson, setScopeJson] = useState(
+    config?.scope ? JSON.stringify(config.scope, null, 2) : "{}",
+  );
+  const [secretRefsJson, setSecretRefsJson] = useState(
+    config?.secretRefs ? JSON.stringify(config.secretRefs, null, 2) : "[]",
+  );
+
+  const isGithub = importerName === "github";
+
+  useEffect(() => {
+    if (config) {
+      setImporterName(config.importerName);
+      setLabel(config.label);
+      setSchedule(config.schedule ?? "");
+      setEnabled(config.enabled);
+
+      const refs = (config.secretRefs ?? []) as SecretRef[];
+      const tokenRef = refs.find((r) => r.key === "token");
+      setToken(tokenRef?.env ?? tokenRef?.file ?? "");
+
+      if (config.importerName === "github" && config.scope && typeof config.scope === "object") {
+        const scope = config.scope as Record<string, unknown>;
+        setOrg((scope.org as string) ?? "");
+        setRepos(Array.isArray(scope.repos) ? (scope.repos as string[]).join(", ") : "");
+        setIncludeForks(Boolean(scope.includeForks));
+        setIncludeArchived(Boolean(scope.includeArchived));
+      } else {
+        setScopeJson(JSON.stringify(config.scope, null, 2));
+      }
+      setSecretRefsJson(JSON.stringify(refs, null, 2));
+    }
+  }, [config]);
+
+  const selectedManifest = manifests.find((m) => m.name === importerName);
+  const baseId = useId();
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+
+    let scope: Record<string, unknown>;
+    let secretRefs: SecretRef[];
+
+    if (isGithub) {
+      scope = {
+        org: org.trim(),
+        repos: repos
+          .split(",")
+          .map((r) => r.trim())
+          .filter((r) => r.length > 0),
+        includeForks,
+        includeArchived,
+      };
+      secretRefs = [{ key: "token", env: token.trim() || undefined }].filter(
+        (r) => r.env,
+      ) as SecretRef[];
+
+      if (!org.trim()) {
+        setError("GitHub organization is required");
+        return;
+      }
+    } else {
+      try {
+        scope = JSON.parse(scopeJson);
+        if (typeof scope !== "object" || scope === null || Array.isArray(scope)) {
+          throw new Error("Scope must be a JSON object");
+        }
+      } catch (err) {
+        setError(`Invalid scope JSON: ${errMessage(err)}`);
+        return;
+      }
+
+      try {
+        const parsed = JSON.parse(secretRefsJson);
+        if (!Array.isArray(parsed)) {
+          throw new Error("Secret refs must be a JSON array");
+        }
+        secretRefs = parsed as SecretRef[];
+      } catch (err) {
+        setError(`Invalid secret refs JSON: ${errMessage(err)}`);
+        return;
+      }
+    }
+
+    if (!label.trim()) {
+      setError("Label is required");
+      return;
+    }
+
+    const payload: ImporterConfigFormOutput = {
+      importerName,
+      label: label.trim(),
+      scope,
+      secretRefs,
+      schedule: schedule.trim() || null,
+      enabled,
+    };
+
+    try {
+      await onSubmit(payload);
+    } catch (err) {
+      setError(errMessage(err));
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor={`${baseId}-importerName`}>Importer</Label>
+        <Select
+          id={`${baseId}-importerName`}
+          value={importerName}
+          onChange={(e) => setImporterName(e.target.value)}
+          required
+          disabled={mode === "edit"}
+        >
+          <option value="" disabled>
+            Select an importer
+          </option>
+          {manifests.map((m) => (
+            <option key={m.name} value={m.name}>
+              {m.label}
+            </option>
+          ))}
+        </Select>
+        {selectedManifest && (
+          <p className="text-sm text-muted-foreground">
+            {selectedManifest.description}
+          </p>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor={`${baseId}-label`}>Label</Label>
+        <Input
+          id={`${baseId}-label`}
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          placeholder="Production GitHub org"
+          required
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor={`${baseId}-schedule`}>Schedule (cron)</Label>
+        <Input
+          id={`${baseId}-schedule`}
+          value={schedule}
+          onChange={(e) => setSchedule(e.target.value)}
+          placeholder="0 0 * * *"
+        />
+      </div>
+
+      {isGithub ? (
+        <div className="space-y-4 rounded-md border p-4 bg-muted/30">
+          <p className="text-sm font-medium">GitHub configuration</p>
+          <div className="space-y-2">
+            <Label htmlFor={`${baseId}-org`}>Organization</Label>
+            <Input
+              id={`${baseId}-org`}
+              value={org}
+              onChange={(e) => setOrg(e.target.value)}
+              placeholder="acme-corp"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor={`${baseId}-repos`}>
+              Repositories (optional, comma separated)
+            </Label>
+            <Input
+              id={`${baseId}-repos`}
+              value={repos}
+              onChange={(e) => setRepos(e.target.value)}
+              placeholder="repo-a, repo-b, org/repo-c"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor={`${baseId}-token`}>Token secret ref</Label>
+            <Input
+              id={`${baseId}-token`}
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+              placeholder="env:GITHUB_TOKEN"
+            />
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-3">
+              <Switch
+                id={`${baseId}-forks`}
+                checked={includeForks}
+                onCheckedChange={setIncludeForks}
+              />
+              <Label htmlFor={`${baseId}-forks`}>Include forks</Label>
+            </div>
+            <div className="flex items-center gap-3">
+              <Switch
+                id={`${baseId}-archived`}
+                checked={includeArchived}
+                onCheckedChange={setIncludeArchived}
+              />
+              <Label htmlFor={`${baseId}-archived`}>Include archived</Label>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="space-y-2">
+            <Label htmlFor={`${baseId}-scope`}>Scope (JSON)</Label>
+            <textarea
+              id={`${baseId}-scope`}
+              value={scopeJson}
+              onChange={(e) => setScopeJson(e.target.value)}
+              rows={6}
+              className={cn(
+                "flex w-full rounded-md border bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                "font-mono",
+              )}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor={`${baseId}-secretRefs`}>Secret refs (JSON array)</Label>
+            <textarea
+              id={`${baseId}-secretRefs`}
+              value={secretRefsJson}
+              onChange={(e) => setSecretRefsJson(e.target.value)}
+              rows={4}
+              className={cn(
+                "flex w-full rounded-md border bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                "font-mono",
+              )}
+            />
+          </div>
+        </>
+      )}
+
+      <div className="flex items-center gap-3">
+        <Switch id={`${baseId}-enabled`} checked={enabled} onCheckedChange={setEnabled} />
+        <Label htmlFor={`${baseId}-enabled`}>Enabled</Label>
+      </div>
+
+      {error && <p className="text-sm text-destructive">{error}</p>}
+
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button type="submit" disabled={isPending}>
+          {mode === "create" ? "Create" : "Save"}
+        </Button>
+      </div>
+    </form>
+  );
+}
