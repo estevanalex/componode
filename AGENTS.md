@@ -937,6 +937,16 @@ The workflow is command-driven via spec-kit skills.
 - Determined by `.specify/init-options.json` (`branch_numbering` field)
 - Feature directories mirror branch names under `specs/`
 
+### Spec Branch Enforcement
+
+When a valid `/speckit-specify` command is issued for a feature, the agent MUST work on the designated spec branch and never on `main` or an unrelated branch:
+
+1. Derive the expected branch name from the spec/feature identifier (e.g., `003-component-catalog`).
+2. Check for an existing branch with that exact name.
+3. If the branch does not exist, create it from the current base branch (typically `main`) and check it out immediately.
+4. All subsequent `/speckit-*` work for that feature (planning, tasks, implementation, convergence) MUST remain on that branch until the feature is merged.
+5. If the agent is not currently on the designated branch, it MUST switch to it before writing `specs/{NNN-feature-name}/` artifacts or application code.
+
 ### v1 Feature Breakdown (ADR-083)
 
 v1 is split into 6 spec-kit features with an explicit dependency graph:
