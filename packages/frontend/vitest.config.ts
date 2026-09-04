@@ -8,7 +8,14 @@ export default defineConfig({
     },
   },
   test: {
-    include: ["test/unit/**/*.test.ts", "src/test/unit/**/*.test.ts"],
+    include: [
+      "test/unit/**/*.test.ts",
+      "test/unit/**/*.test.tsx",
+      "src/test/unit/**/*.test.ts",
+      "src/test/unit/**/*.test.tsx",
+      "test/perf/**/*.test.ts",
+      "test/perf/**/*.test.tsx",
+    ],
     environment: "jsdom",
   },
 });

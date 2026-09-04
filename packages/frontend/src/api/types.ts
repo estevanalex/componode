@@ -95,3 +95,58 @@ export interface ImportRun {
   errorType: string | null;
   createdAt: string;
 }
+
+export interface ComponentGroup {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  lifecycle: string;
+}
+
+export interface Component {
+  id: string;
+  name: string;
+  slug: string;
+  category: string;
+  provider: string;
+  resourceType: string;
+  lifecycle: string;
+  componentGroupId: string | null;
+  componentGroupName: string | null;
+  instanceCount: number;
+}
+
+export interface ComponentInstance {
+  id: string;
+  componentId: string;
+  environment: string;
+  url: string | null;
+  region: string | null;
+  status: string;
+  version: string | null;
+  deployedAt: string | null;
+  externalId: string;
+  slug: string;
+  lastSeenAt: string | null;
+}
+
+export interface ComponentWithInstances extends Component {
+  externalId: string | null;
+  details: Record<string, unknown> | null;
+  lastSeenAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  instances: ComponentInstance[];
+}
+
+export interface ComponentListResponse {
+  data: Component[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    pageCount: number;
+    hasNext: boolean;
+  };
+}

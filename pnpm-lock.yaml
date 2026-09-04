@@ -41,9 +41,27 @@ importers:
       '@componode/core':
         specifier: workspace:*
         version: link:../core
+      '@componode/importer-api-url':
+        specifier: workspace:*
+        version: link:../importer-api-url
+      '@componode/importer-aws':
+        specifier: workspace:*
+        version: link:../importer-aws
+      '@componode/importer-azure':
+        specifier: workspace:*
+        version: link:../importer-azure
       '@componode/importer-github':
         specifier: workspace:*
         version: link:../importer-github
+      '@componode/importer-kubernetes':
+        specifier: workspace:*
+        version: link:../importer-kubernetes
+      '@componode/importer-mcp-server':
+        specifier: workspace:*
+        version: link:../importer-mcp-server
+      '@componode/importer-web-url':
+        specifier: workspace:*
+        version: link:../importer-web-url
       '@fastify/cookie':
         specifier: ^11.0.2
         version: 11.1.2
@@ -234,6 +252,54 @@ importers:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@22.20.1)(jsdom@25.0.1)(lightningcss@1.32.0)
 
+  packages/importer-api-url:
+    dependencies:
+      '@componode/core':
+        specifier: workspace:*
+        version: link:../core
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.20.1)(jsdom@25.0.1)(lightningcss@1.32.0)
+
+  packages/importer-aws:
+    dependencies:
+      '@componode/core':
+        specifier: workspace:*
+        version: link:../core
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.20.1)(jsdom@25.0.1)(lightningcss@1.32.0)
+
+  packages/importer-azure:
+    dependencies:
+      '@componode/core':
+        specifier: workspace:*
+        version: link:../core
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.20.1)(jsdom@25.0.1)(lightningcss@1.32.0)
+
   packages/importer-github:
     dependencies:
       '@componode/core':
@@ -242,6 +308,54 @@ importers:
       octokit:
         specifier: ^4.0.2
         version: 4.1.4
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.20.1)(jsdom@25.0.1)(lightningcss@1.32.0)
+
+  packages/importer-kubernetes:
+    dependencies:
+      '@componode/core':
+        specifier: workspace:*
+        version: link:../core
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.20.1)(jsdom@25.0.1)(lightningcss@1.32.0)
+
+  packages/importer-mcp-server:
+    dependencies:
+      '@componode/core':
+        specifier: workspace:*
+        version: link:../core
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.20.1)(jsdom@25.0.1)(lightningcss@1.32.0)
+
+  packages/importer-web-url:
+    dependencies:
+      '@componode/core':
+        specifier: workspace:*
+        version: link:../core
       zod:
         specifier: ^3.24.1
         version: 3.25.76

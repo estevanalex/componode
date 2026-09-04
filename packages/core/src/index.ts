@@ -58,6 +58,20 @@ export {
   createImporterConfigSchema,
   updateImporterConfigSchema,
 } from "./schemas/importer-config.js";
+export {
+  listComponentsQuerySchema,
+  updateComponentGroupAssignmentSchema,
+  createComponentGroupSchema,
+  updateComponentGroupSchema,
+  listComponentGroupsQuerySchema,
+} from "./schemas/components.js";
+export type {
+  ListComponentsQuery,
+  UpdateComponentGroupAssignmentInput,
+  CreateComponentGroupInput,
+  UpdateComponentGroupInput,
+  ListComponentGroupsQuery,
+} from "./schemas/components.js";
 export type {
   LoginInput,
   RegisterInput,

@@ -9,7 +9,15 @@ export interface ImporterManifest {
   configSchema: unknown;
 }
 
-const IMPORTER_PACKAGES = ["@componode/importer-github"];
+const IMPORTER_PACKAGES = [
+  "@componode/importer-github",
+  "@componode/importer-aws",
+  "@componode/importer-azure",
+  "@componode/importer-kubernetes",
+  "@componode/importer-web-url",
+  "@componode/importer-api-url",
+  "@componode/importer-mcp-server",
+];
 
 const manifestCache = new Map<string, ImporterManifest>();
 const importerCache = new Map<string, Importer>();
@@ -56,10 +64,16 @@ export async function getImporter(name: string): Promise<Importer> {
   }
 
   const manifest = await getManifest(name);
-  const mod = (await import(manifest.implPath)) as { GithubImporter?: unknown } | { default?: unknown };
+  const mod = (await import(manifest.implPath)) as Record<string, unknown>;
+
+  // Derive the named class from the importer name (e.g., "web-url" -> "WebUrlImporter").
+  const className = name
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join("") + "Importer";
 
   // Support both named and default exports of the importer class.
-  const ImporterClass = (mod as Record<string, unknown>).GithubImporter ?? (mod as { default?: unknown }).default;
+  const ImporterClass = mod[className] ?? (mod as { default?: unknown }).default;
   if (!ImporterClass || typeof ImporterClass !== "function") {
     throw new Error(`Importer ${name} does not export a valid class`);
   }
