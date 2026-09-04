@@ -1,6 +1,9 @@
-import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, it, expect, afterEach } from "vitest";
+import { render, screen, cleanup } from "@testing-library/react";
+import "@testing-library/jest-dom/vitest";
 import { ExternalLink } from "../../src/components/external-link";
+
+afterEach(cleanup);
 
 describe("ExternalLink", () => {
   it("renders an anchor tag with target=_blank", () => {

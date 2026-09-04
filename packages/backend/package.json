@@ -17,7 +17,13 @@
   },
   "dependencies": {
     "@componode/core": "workspace:*",
+    "@componode/importer-api-url": "workspace:*",
+    "@componode/importer-aws": "workspace:*",
+    "@componode/importer-azure": "workspace:*",
     "@componode/importer-github": "workspace:*",
+    "@componode/importer-kubernetes": "workspace:*",
+    "@componode/importer-mcp-server": "workspace:*",
+    "@componode/importer-web-url": "workspace:*",
     "@fastify/cookie": "^11.0.2",
     "@fastify/cors": "^11.0.1",
     "@fastify/helmet": "^13.0.1",

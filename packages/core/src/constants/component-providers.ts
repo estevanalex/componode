@@ -5,9 +5,9 @@ export const COMPONENT_PROVIDERS = [
   "GOOGLE_CLOUD",
   "KUBERNETES",
   "DOCKER",
-  "WEB",
-  "API",
-  "MCP",
+  "WEB_URL",
+  "API_URL",
+  "MCP_SERVER",
   "OTHER",
 ] as const;
 
@@ -41,16 +41,16 @@ export const COMPONENT_PROVIDER_META: Record<
     label: "Docker",
     description: "Containers and images discovered from a Docker host",
   },
-  WEB: {
-    label: "Web",
+  WEB_URL: {
+    label: "Web URL",
     description: "Endpoints discovered by probing a web URL",
   },
-  API: {
-    label: "API",
+  API_URL: {
+    label: "API URL",
     description: "APIs discovered by probing an API URL (OpenAPI/health)",
   },
-  MCP: {
-    label: "MCP",
+  MCP_SERVER: {
+    label: "MCP Server",
     description: "Tools and resources discovered from an MCP server",
   },
   OTHER: {

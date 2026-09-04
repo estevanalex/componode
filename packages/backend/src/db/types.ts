@@ -116,6 +116,7 @@ export interface ComponentGroupRow {
   name: string;
   slug: string;
   description: string | null;
+  lifecycle: string;
   teamOwnerId: string | null;
   createdBy: string | null;
   updatedBy: string | null;

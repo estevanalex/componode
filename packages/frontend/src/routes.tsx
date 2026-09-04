@@ -6,6 +6,8 @@ import { OidcCallbackPage } from "@/pages/oidc-callback";
 import { DashboardPage } from "@/pages/dashboard";
 import { ProductsPage } from "@/pages/products";
 import { ComponentsPage } from "@/pages/components";
+import { ComponentDetailPage } from "@/pages/component-detail";
+import { ComponentGroupsPage } from "@/pages/component-groups";
 import { ImportersPage } from "@/pages/importers";
 import { ImporterRunPage } from "@/pages/importer-run";
 import { UsersPage } from "@/pages/users";
@@ -38,6 +40,22 @@ export const routes: RouteObject[] = [
     element: (
       <AuthGuard>
         <ComponentsPage />
+      </AuthGuard>
+    ),
+  },
+  {
+    path: "/components/:id",
+    element: (
+      <AuthGuard>
+        <ComponentDetailPage />
+      </AuthGuard>
+    ),
+  },
+  {
+    path: "/component-groups",
+    element: (
+      <AuthGuard>
+        <ComponentGroupsPage />
       </AuthGuard>
     ),
   },

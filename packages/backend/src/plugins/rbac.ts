@@ -19,6 +19,10 @@ const PERMISSIONS: Record<string, Role> = {
   "importer:config:delete": "ADMIN",
   "importer:run:trigger": "EDITOR",
   "importer:run:cancel": "EDITOR",
+  "component:update": "EDITOR",
+  "componentGroup:create": "EDITOR",
+  "componentGroup:update": "EDITOR",
+  "componentGroup:delete": "EDITOR",
   // Editor actions (not in foundation, but defined for future)
   // Viewer = read-only (default for all GET routes)
 };

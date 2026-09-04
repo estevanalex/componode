@@ -19,6 +19,8 @@ import { userRoutes } from "./routes/users.js";
 import { settingsRoutes } from "./routes/settings.js";
 import { sessionRoutes } from "./routes/sessions.js";
 import { importerRoutes } from "./routes/importers.js";
+import { componentRoutes } from "./routes/components.js";
+import { componentGroupRoutes } from "./routes/component-groups.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -60,6 +62,8 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(settingsRoutes, { prefix: "/api/v1" });
   await app.register(sessionRoutes, { prefix: "/api/v1" });
   await app.register(importerRoutes, { prefix: "/api/v1" });
+  await app.register(componentRoutes, { prefix: "/api/v1" });
+  await app.register(componentGroupRoutes, { prefix: "/api/v1" });
 
   // Metrics endpoint — unauthenticated, no prefix (ADR-069)
   await app.register(metricsRoutes);

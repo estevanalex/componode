@@ -1,0 +1,86 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "@/api/client";
+import type { ComponentGroup } from "@/api/types";
+
+export interface CreateComponentGroupInput {
+  name: string;
+  slug: string;
+  description?: string;
+  teamOwnerId?: string;
+}
+
+export interface UpdateComponentGroupInput {
+  name?: string;
+  slug?: string;
+  description?: string;
+  lifecycle?: string;
+  teamOwnerId?: string;
+}
+
+export interface AssignComponentGroupInput {
+  componentId: string;
+  componentGroupId: string | null;
+}
+
+export function useComponentGroups() {
+  return useQuery({
+    queryKey: ["component-groups"],
+    queryFn: () => api<{ groups: ComponentGroup[] }>("/component-groups"),
+  });
+}
+
+export function useCreateComponentGroup() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: CreateComponentGroupInput) =>
+      api<{ group: ComponentGroup }>("/component-groups", {
+        method: "POST",
+        body: JSON.stringify(vars),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["component-groups"] });
+    },
+  });
+}
+
+export function useUpdateComponentGroup() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { id: string } & UpdateComponentGroupInput) =>
+      api<{ group: ComponentGroup }>(`/component-groups/${vars.id}`, {
+        method: "PATCH",
+        body: JSON.stringify(vars),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["component-groups"] });
+    },
+  });
+}
+
+export function useDeleteComponentGroup() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      api<undefined>(`/component-groups/${id}`, { method: "DELETE" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["component-groups"] });
+    },
+  });
+}
+
+export function useAssignComponentGroup() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: AssignComponentGroupInput) =>
+      api<{ component: { componentGroupId: string | null } }>(
+        `/components/${vars.componentId}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ componentGroupId: vars.componentGroupId }),
+        },
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["components"] });
+    },
+  });
+}

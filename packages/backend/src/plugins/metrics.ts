@@ -96,6 +96,17 @@ const importRunErrorsTotal = getOrCreateCounter(
   ["importer", "errorType"],
 );
 
+// Catalog metrics
+const componentsTotal = getOrCreateGauge(
+  "components_total",
+  "Total number of components in the catalog",
+);
+
+const componentGroupsTotal = getOrCreateGauge(
+  "component_groups_total",
+  "Total number of component groups",
+);
+
 // Collect default Node.js metrics (event loop, GC, memory, CPU) once per process.
 const collectDefaultMetrics = promClient.collectDefaultMetrics;
 if (!promClient.register.getSingleMetric("process_cpu_user_seconds_total")) {
@@ -114,6 +125,8 @@ export const metrics = {
   importRunDurationSeconds,
   importRunAssetsYieldedTotal,
   importRunErrorsTotal,
+  componentsTotal,
+  componentGroupsTotal,
 };
 
 export async function metricsPlugin(app: FastifyInstance): Promise<void> {
