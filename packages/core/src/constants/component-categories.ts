@@ -1,28 +1,28 @@
 export const COMPONENT_CATEGORIES = [
   "COMPUTE",
-  "STORAGE",
-  "NETWORK",
-  "DATABASE",
-  "MESSAGE_QUEUE",
-  "CACHE",
-  "CDN",
-  "LOAD_BALANCER",
-  "API_GATEWAY",
+  "SERVERLESS",
   "CONTAINER",
   "CONTAINER_ORCHESTRATION",
-  "SERVERLESS_FUNCTION",
-  "STATIC_SITE",
-  "WEB_APP",
-  "MOBILE_APP",
-  "DESKTOP_APP",
-  "CLI_TOOL",
-  "SDK_LIBRARY",
-  "DATA_PIPELINE",
-  "ETL_JOB",
-  "ANALYTICS_SERVICE",
-  "MONITORING_SERVICE",
-  "IDENTITY_PROVIDER",
-  "OTHER",
+  "DATABASE",
+  "STORAGE",
+  "NETWORK",
+  "QUEUE",
+  "CDN",
+  "DNS",
+  "CERTIFICATE",
+  "SECRET",
+  "KMS_KEY",
+  "IDENTITY",
+  "OBSERVABILITY",
+  "API",
+  "MCP_SERVER",
+  "WEB_ENDPOINT",
+  "REPOSITORY",
+  "PACKAGE_REGISTRY",
+  "DOCUMENTATION",
+  "IAC",
+  "JOB",
+  "LIBRARY",
 ] as const;
 
 export type ComponentCategory = typeof COMPONENT_CATEGORIES[number];
@@ -35,96 +35,96 @@ export const COMPONENT_CATEGORY_META: Record<
     label: "Compute",
     description: "Virtual machines, bare-metal hosts, and general compute resources",
   },
+  SERVERLESS: {
+    label: "Serverless",
+    description: "Function-as-a-service and serverless compute resources",
+  },
+  CONTAINER: {
+    label: "Container",
+    description: "Individual container workloads",
+  },
+  CONTAINER_ORCHESTRATION: {
+    label: "Container Orchestration",
+    description: "Orchestrated workload resources such as Kubernetes Deployments or ReplicaSets",
+  },
+  DATABASE: {
+    label: "Database",
+    description: "Managed relational, document, and other datastore services",
+  },
   STORAGE: {
     label: "Storage",
     description: "Object, block, and file storage services",
   },
   NETWORK: {
     label: "Network",
-    description: "Virtual networks, subnets, routing, and connectivity",
+    description: "Virtual networks, subnets, routing, and connectivity resources",
   },
-  DATABASE: {
-    label: "Database",
-    description: "Managed relational, document, and other datastore services",
-  },
-  MESSAGE_QUEUE: {
-    label: "Message Queue",
+  QUEUE: {
+    label: "Queue",
     description: "Brokers and queues for asynchronous messaging",
-  },
-  CACHE: {
-    label: "Cache",
-    description: "In-memory caching services",
   },
   CDN: {
     label: "CDN",
     description: "Content delivery networks and edge distribution",
   },
-  LOAD_BALANCER: {
-    label: "Load Balancer",
-    description: "Traffic distribution across multiple targets",
+  DNS: {
+    label: "DNS",
+    description: "DNS zones, records, and name services",
   },
-  API_GATEWAY: {
-    label: "API Gateway",
-    description: "Managed API routing, throttling, and composition",
+  CERTIFICATE: {
+    label: "Certificate",
+    description: "TLS certificates and certificate authorities",
   },
-  CONTAINER: {
-    label: "Container",
-    description: "Individual container workloads (e.g. a running container image)",
+  SECRET: {
+    label: "Secret",
+    description: "Secret storage and vault entries",
   },
-  CONTAINER_ORCHESTRATION: {
-    label: "Container Orchestration",
-    description: "Orchestrated workload resources (e.g. Kubernetes Deployments, ReplicaSets)",
+  KMS_KEY: {
+    label: "KMS Key",
+    description: "Key management service keys",
   },
-  SERVERLESS_FUNCTION: {
-    label: "Serverless Function",
-    description: "Function-as-a-service compute invoked on demand",
+  IDENTITY: {
+    label: "Identity",
+    description: "Identity providers, roles, and access management",
   },
-  STATIC_SITE: {
-    label: "Static Site",
-    description: "Static asset hosting served directly to browsers",
+  OBSERVABILITY: {
+    label: "Observability",
+    description: "Monitoring, logging, tracing, and alerting services",
   },
-  WEB_APP: {
-    label: "Web App",
-    description: "Server-rendered or hybrid browser applications",
+  API: {
+    label: "API",
+    description: "Managed APIs, API gateways, and API products",
   },
-  MOBILE_APP: {
-    label: "Mobile App",
-    description: "Native or cross-platform mobile applications",
+  MCP_SERVER: {
+    label: "MCP Server",
+    description: "Model Context Protocol servers exposing tools, resources, or prompts",
   },
-  DESKTOP_APP: {
-    label: "Desktop App",
-    description: "Native desktop applications",
+  WEB_ENDPOINT: {
+    label: "Web Endpoint",
+    description: "Web-accessible endpoints and URLs",
   },
-  CLI_TOOL: {
-    label: "CLI Tool",
-    description: "Command-line tools distributed to users or CI",
+  REPOSITORY: {
+    label: "Repository",
+    description: "Source code repositories such as GitHub, GitLab, or Bitbucket repos",
   },
-  SDK_LIBRARY: {
-    label: "SDK / Library",
-    description: "Published libraries and SDKs consumed by other code",
+  PACKAGE_REGISTRY: {
+    label: "Package Registry",
+    description: "Published package and artifact registries",
   },
-  DATA_PIPELINE: {
-    label: "Data Pipeline",
-    description: "Stream or batch processing pipelines",
+  DOCUMENTATION: {
+    label: "Documentation",
+    description: "Documentation sites, wikis, and knowledge bases",
   },
-  ETL_JOB: {
-    label: "ETL Job",
-    description: "Scheduled extract-transform-load jobs",
+  IAC: {
+    label: "IaC",
+    description: "Infrastructure-as-code modules, stacks, and definitions",
   },
-  ANALYTICS_SERVICE: {
-    label: "Analytics Service",
-    description: "Reporting, BI, and analytics services",
+  JOB: {
+    label: "Job",
+    description: "Scheduled or ad-hoc batch and job workloads",
   },
-  MONITORING_SERVICE: {
-    label: "Monitoring Service",
-    description: "Observability, metrics, and alerting services",
-  },
-  IDENTITY_PROVIDER: {
-    label: "Identity Provider",
-    description: "Authentication and identity services (e.g. OIDC, SAML providers)",
-  },
-  OTHER: {
-    label: "Other",
-    description: "Component that does not fit any other category",
+  LIBRARY: {
+    label: "Library",
+    description: "Reusable libraries and SDKs",
   },
 };

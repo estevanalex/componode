@@ -36,7 +36,8 @@ describe("check-constraint-helper", () => {
     const sql = getSqlFragment(checkConstraint("category", COMPONENT_CATEGORIES));
     expect(sql).toContain("category");
     expect(sql).toContain("COMPUTE");
-    expect(sql).toContain("OTHER");
+    expect(sql).toContain("REPOSITORY");
+    expect(COMPONENT_CATEGORIES).toHaveLength(24);
   });
 
   it("generates CHECK for component providers", () => {

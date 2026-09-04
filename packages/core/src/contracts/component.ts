@@ -12,6 +12,8 @@ export interface Component {
   componentGroupId?: string | null;
   externalId?: string | null;
   details?: Record<string, unknown> | null;
+  lastSeenAt?: string | null;
+  lastSeenInRunId?: string | null;
   createdBy?: string | null;
   updatedBy?: string | null;
   createdAt: string;

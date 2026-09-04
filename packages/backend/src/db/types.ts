@@ -83,6 +83,8 @@ export interface ComponentRow {
   componentGroupId: string | null;
   externalId: string | null;
   details: Record<string, unknown> | null;
+  lastSeenAt: string | null;
+  lastSeenInRunId: string | null;
   createdBy: string | null;
   updatedBy: string | null;
   createdAt: Generated<string>;
@@ -100,6 +102,9 @@ export interface ComponentInstanceRow {
   deployedAt: string | null;
   rawConfig: Record<string, unknown> | null;
   externalId: string;
+  slug: string;
+  lastSeenAt: string | null;
+  lastSeenInRunId: string | null;
   createdBy: string | null;
   updatedBy: string | null;
   createdAt: Generated<string>;
@@ -111,6 +116,7 @@ export interface ComponentGroupRow {
   name: string;
   slug: string;
   description: string | null;
+  lifecycle: string;
   teamOwnerId: string | null;
   createdBy: string | null;
   updatedBy: string | null;
@@ -140,9 +146,8 @@ export interface ImporterConfigRow {
   id: string;
   importerName: string;
   label: string;
-  config: Record<string, unknown>;
-  secretRefs: Record<string, string> | null;
-  scope: Record<string, unknown> | null;
+  scope: Record<string, unknown>;
+  secretRefs: Array<{ key: string; env?: string; file?: string }> | null;
   schedule: string | null;
   enabled: boolean;
   createdBy: string | null;
@@ -163,6 +168,8 @@ export interface ImportRunRow {
   assetsUpdated: number;
   instancesOrphaned: number;
   componentsRetired: number;
+  currentPhase: string | null;
+  cancelRequestedAt: string | null;
   errorMessage: string | null;
   errorStack: string | null;
   errorType: string | null;

@@ -114,8 +114,8 @@ describe("migrations", () => {
       .execute();
 
     await expect(
-      sql`INSERT INTO component_instances (id, componentId, environment, status, createdAt, updatedAt)
-          VALUES (${uuidv7()}, ${componentId}, 'DEV', 'RUNNING', ${now}, ${now})`.execute(
+      sql`INSERT INTO component_instances (id, componentId, environment, status, slug, createdAt, updatedAt)
+          VALUES (${uuidv7()}, ${componentId}, 'DEV', 'RUNNING', 'test-instance', ${now}, ${now})`.execute(
         testDb.db,
       ),
     ).rejects.toThrow();
@@ -149,6 +149,7 @@ describe("migrations", () => {
         environment: "DEV",
         status: "RUNNING",
         externalId: "same-instance",
+        slug: "same-instance-dev",
         createdAt: now,
         updatedAt: now,
       })
@@ -163,6 +164,7 @@ describe("migrations", () => {
           environment: "PRODUCTION",
           status: "RUNNING",
           externalId: "same-instance",
+          slug: "same-instance-prod",
           createdAt: now,
           updatedAt: now,
         })

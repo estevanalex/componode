@@ -5,6 +5,8 @@ import { fileURLToPath } from "url";
 import { db } from "./db/connection.js";
 import { buildApp } from "./app.js";
 import { bootstrapAdmin } from "./services/bootstrap-service.js";
+import { recoverRuns } from "./services/recovery-service.js";
+import { initScheduler } from "./services/scheduler-service.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -48,10 +50,16 @@ async function main(): Promise<void> {
   // 1. Run migrations
   await runMigrations();
 
-  // 2. Bootstrap admin (if DB is empty)
+  // 2. Recover any stale import runs from a previous crash
+  await recoverRuns();
+
+  // 3. Bootstrap admin (if DB is empty)
   await bootstrapAdmin();
 
-  // 3. Build and start the server
+  // 4. Initialize scheduled importers
+  await initScheduler();
+
+  // 5. Build and start the server
   const app = await buildApp();
   const port = parseInt(process.env.PORT ?? "3000", 10);
 

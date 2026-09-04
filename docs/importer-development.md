@@ -1,0 +1,156 @@
+# Importer Development Guide
+
+This document is the contributor contract for adding new importers to Componode. It applies to all packages under `packages/importer-*`.
+
+---
+
+## Core rules
+
+1. **Importers are pull-only.** They read from an external system and yield `DiscoveredAsset` records. They never write to the Componode database, call backend services, or push data back to the source.
+2. **Importers depend only on `@componode/core`.** They must not import from `@componode/backend` or from other importers.
+3. **Secrets are resolved by the core.** The backend resolves `secretRefs` to a `Record<string, string>` and passes that map to the importer. Importers must not read `process.env`.
+4. **Respect `AbortSignal`.** All long-running or paginated work must check `context.signal.aborted` and, where the underlying SDK supports it, pass the signal into network requests.
+5. **Validate with `validateDiscoveredAsset`.** The backend validates each yielded asset, but importers should avoid emitting invalid data.
+6. **Use structured logging.** Write progress through `context.logger` and `context.reportPhase`.
+7. **No `relationships` in v1.** `DiscoveredAsset.relationships` is not part of the v1 contract.
+
+---
+
+## Package structure
+
+Each importer package follows the same layout:
+
+```text
+packages/importer-<provider>/
+├── package.json
+├── tsconfig.json
+├── src/
+│   ├── config.ts       # Zod schema for the importer-specific scope
+│   ├── manifest.ts     # ImporterManifest exported as `manifest`
+│   └── importer.ts     # Importer.run implementation
+└── test/
+    └── importer.test.ts
+```
+
+### `package.json`
+
+- `type: "module"`
+- `exports` for `./manifest` and `./importer`
+- `dependencies`: only `@componode/core` plus the SDK needed to talk to the source
+
+### `manifest.ts`
+
+```ts
+import { githubConfigSchema } from "./config.js";
+
+export const manifest = {
+  name: "github",
+  label: "GitHub",
+  description: "Import GitHub repositories as components.",
+  version: "1.0.0",
+  implPath: "@componode/importer-<provider>/importer",
+  configSchema: githubConfigSchema,
+};
+```
+
+### `config.ts`
+
+```ts
+import { z } from "zod";
+
+export const githubConfigSchema = z.object({
+  org: z.string().min(1),
+  repos: z.array(z.string()).optional(),
+  includeForks: z.boolean().default(false),
+  includeArchived: z.boolean().default(false),
+});
+
+export type GithubConfig = z.infer<typeof githubConfigSchema>;
+```
+
+### `importer.ts`
+
+```ts
+import type { DiscoveredAsset, Importer, ImporterContext } from "@componode/core";
+import type { GithubConfig } from "./config.js";
+
+export class GithubImporter implements Importer {
+  readonly name = "github";
+  readonly version = "1.0.0";
+
+  async *run(
+    config: Record<string, unknown>,
+    secrets: Record<string, string>,
+    context: ImporterContext,
+  ): AsyncGenerator<DiscoveredAsset> {
+    const parsed = config as GithubConfig;
+    context.reportPhase("Authenticating");
+
+    for await (const asset of fetchAssets(parsed, secrets, context)) {
+      if (context.signal.aborted) return;
+      yield asset;
+    }
+
+    context.reportPhase("Completed");
+  }
+}
+```
+
+---
+
+## `DiscoveredAsset` contract
+
+```ts
+export interface DiscoveredAsset {
+  category: ComponentCategory;
+  provider: string;
+  resourceType: string;
+  name: string;
+  externalId: string;
+  slug?: string;
+  details?: Record<string, unknown>;
+  instances: DiscoveredAssetInstance[];
+}
+
+export interface DiscoveredAssetInstance {
+  environment: string;
+  externalId: string;
+  url?: string | null;
+  status?: string;
+  version?: string | null;
+  deployedAt?: string | null;
+  rawConfig?: Record<string, unknown> | null;
+}
+```
+
+- `category` must be one of the 24 `COMPONENT_CATEGORIES` values in `packages/core`.
+- `externalId` must be stable across runs for the same source asset.
+- `instances` represents environment-specific deployments of the same logical component.
+
+---
+
+## Adding a new importer
+
+1. Copy `packages/importer-github` to `packages/importer-<provider>`.
+2. Replace the SDK, config schema, and `run` implementation.
+3. Add the package to `packages/backend/package.json` as a `workspace:*` dependency.
+4. Register the package in `packages/backend/src/services/importer-registry.ts`:
+
+   ```ts
+   const IMPORTER_PACKAGES = [
+     "@componode/importer-github",
+     "@componode/importer-<provider>",
+   ];
+   ```
+
+5. Run `pnpm install`, `pnpm -r build`, and `pnpm -r typecheck`.
+6. Add unit tests for the new importer and an integration test through the backend run service.
+
+---
+
+## Testing checklist
+
+- [ ] Unit tests mock the external SDK and verify yielded `DiscoveredAsset` records.
+- [ ] Unit tests verify `AbortSignal` stops iteration cleanly.
+- [ ] Integration test triggers a run through the backend and verifies DB rows.
+- [ ] `pnpm build` and `pnpm typecheck` pass for the new package.
