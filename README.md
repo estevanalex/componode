@@ -32,39 +32,24 @@ meaning layer (what it means).
 - Not a security scanner (risk scoring and ASPM integration are deferred to a
   later phase).
 
-## Current status: 001-foundation complete
+## Current status
 
-The foundation feature is implemented and pushed. It provides:
+The project is in active v1 development. The following capabilities are
+implemented and tested:
 
-- Shared contracts in `packages/core` (`DiscoveredAsset`, `Importer` interface,
-  entity types, constants, schemas, observability interfaces).
-- A 24-table PostgreSQL schema with Kysely migrations, CHECK constraints from
-  `core` constants, append-only audit triggers, and terminal-state triggers.
-- Fastify backend with:
-  - Local auth (Argon2id, server-side sessions in PostgreSQL)
-  - Optional OIDC integration with JIT provisioning, claim-based role mapping,
-    and local admin override
-  - Self-registration (admin toggle, rate-limited)
-  - RBAC with three roles: `ADMIN`, `EDITOR`, `VIEWER`
-  - CSRF double-submit cookie protection
-  - Rate limiting (login 5/min per username or IP, register 3/min per IP)
-  - Security headers via `@fastify/helmet`
-  - CORS opt-in with exact-origin allow-list
-  - Structured JSON logging with redaction filter
-  - Prometheus `/metrics` endpoint
-  - OpenTelemetry tracing
-- React/Vite frontend with:
-  - Login, register, and OIDC callback pages
-  - Dashboard, Products, Components, Importers, Settings, Sessions, Users pages
-  - shadcn/ui components (Button, Input, Label, Card, Table, Dialog, Select,
-    Form, Switch, Badge, Sonner)
-  - Tailwind CSS v4 with theme tokens
-  - TanStack Query hooks and a fetch client with CSRF header support
-- Unit and integration tests with Vitest and testcontainers for DB-touching
-  code.
-
-Importer packages are planned for the `002-importer-framework` and
-`003-component-catalog` features.
+- **Foundation**: shared `packages/core` contracts, a 24-table PostgreSQL schema
+  with Kysely migrations, Fastify backend with local/OIDC auth, RBAC, CSRF,
+  rate limiting, security headers, logging, metrics, and tracing; React/Vite
+  frontend with auth, dashboard, and shadcn/ui components.
+- **Importer framework**: scheduler, registry, import-run reconciliation, and the
+  pull-only `AsyncGenerator<DiscoveredAsset>` contract.
+- **Component catalog**: components and component groups (CRUD, listing,
+  search/filter, pagination), lifecycle/operational-state defaults
+  (`RETIRED`/`GONE` exclusion), and quickstart integration.
+- **Importers**: GitHub, AWS, Azure, Kubernetes, Web URL, API URL, and MCP Server
+  packages, all validating yielded assets through `validateDiscoveredAsset`.
+- **Testing**: Vitest unit tests and testcontainer-backed integration tests,
+  including catalog API and frontend table performance checks.
 
 ## Technology Stack
 
