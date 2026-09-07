@@ -34,6 +34,7 @@ const CODE_MEANINGS: Record<string, string> = {
   OIDC_INVALID_CODE: "Missing or invalid OIDC code",
   OIDC_TOKEN_VERIFICATION_FAILED: "OIDC token verification failed",
   OIDC_DISCOVERY_FAILED: "OIDC issuer discovery failed",
+  CSRF_TOKEN_MISMATCH: "Missing/mismatched CSRF token on a state-changing request (403)",
   VALIDATION_FAILED: "Zod input validation failed (400)",
   NOT_FOUND: "Resource not found (404)",
   CONFLICT: "Generic conflict (409)",
@@ -42,6 +43,10 @@ const CODE_MEANINGS: Record<string, string> = {
   REFERENCED: "Delete blocked by existing references",
   TYPE_CHANGE_BLOCKED: "Product type change not allowed",
   SLUG_TAKEN: "Slug uniqueness conflict",
+  SLUG_CONFLICT: "Component-group slug already in use (409)",
+  CONFIG_NOT_FOUND: "Importer config missing at run time (surfaced via run error fields)",
+  RUN_IN_PROGRESS: "An import run is already in progress for this config (409)",
+  RUN_NOT_ACTIVE: "Run is not PENDING/RUNNING and cannot be cancelled (409)",
   INTERNAL_ERROR: "Unhandled server error",
 };
 

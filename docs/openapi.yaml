@@ -718,7 +718,16 @@ paths:
         '400': { $ref: '#/components/responses/ValidationFailed' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
-        '409': { $ref: '#/components/responses/Conflict' }
+        '409':
+          description: Edge would create a cycle (`CYCLE_DETECTED`)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: Parent type not allowed (`INVALID_EDGE_TYPE`)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /products/{id}/composes/{childId}:
     delete:
       tags: [Products]
@@ -761,7 +770,11 @@ paths:
         '400': { $ref: '#/components/responses/ValidationFailed' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
-        '409': { $ref: '#/components/responses/Conflict' }
+        '422':
+          description: Target is not a PLATFORM product (`INVALID_EDGE_TYPE`)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /products/{id}/consumes-from/{platformId}:
     delete:
       tags: [Products]
@@ -802,7 +815,11 @@ paths:
         '400': { $ref: '#/components/responses/ValidationFailed' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
-        '409': { $ref: '#/components/responses/Conflict' }
+        '422':
+          description: Edge type rule violated (`INVALID_EDGE_TYPE`)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /products/{id}/depends-on/{componentId}:
     delete:
       tags: [Products]
@@ -989,7 +1006,11 @@ paths:
         '400': { $ref: '#/components/responses/ValidationFailed' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
-        '409': { $ref: '#/components/responses/Conflict' }
+        '409':
+          description: Slug already in use (`SLUG_CONFLICT`)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /component-groups/{id}:
     get:
       tags: [ComponentGroups]
@@ -1039,7 +1060,11 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
-        '409': { $ref: '#/components/responses/Conflict' }
+        '409':
+          description: Slug already in use (`SLUG_CONFLICT`)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
     delete:
       tags: [ComponentGroups]
       summary: Delete a component group
@@ -1240,7 +1265,11 @@ paths:
                   runId: { type: string, format: uuid }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
-        '409': { $ref: '#/components/responses/Conflict' }
+        '409':
+          description: A run is already in progress for this config (`RUN_IN_PROGRESS`)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /importer-configs/{id}/runs:
     get:
       tags: [Importers]
@@ -1617,6 +1646,7 @@ components:
             - OIDC_INVALID_CODE
             - OIDC_TOKEN_VERIFICATION_FAILED
             - OIDC_DISCOVERY_FAILED
+            - CSRF_TOKEN_MISMATCH
             - VALIDATION_FAILED
             - NOT_FOUND
             - CONFLICT
@@ -1625,6 +1655,10 @@ components:
             - REFERENCED
             - TYPE_CHANGE_BLOCKED
             - SLUG_TAKEN
+            - SLUG_CONFLICT
+            - CONFIG_NOT_FOUND
+            - RUN_IN_PROGRESS
+            - RUN_NOT_ACTIVE
             - INTERNAL_ERROR
         message: { type: string }
         details: { description: Optional details (e.g. Zod issues) }
@@ -1797,7 +1831,7 @@ components:
         configId: { type: string, format: uuid }
         status:
           type: string
-          enum: [PENDING, RUNNING, SUCCEEDED, FAILED, CANCELLED]
+          enum: [PENDING, RUNNING, COMPLETED, FAILED, CANCELLED, INTERRUPTED]
         triggeredBy: { type: string, format: uuid, nullable: true }
         startedAt: { type: string, format: date-time, nullable: true }
         completedAt: { type: string, format: date-time, nullable: true }
