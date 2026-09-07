@@ -88,8 +88,8 @@ edge, and a component dependency — every tab renders the contract shape.
 
 ### Tests for User Story 2 ⚠️ (write first, confirm FAIL)
 
-- [X] T017 [P] [US2] Integration test: `GET /api/v1/products/:slug` returns composition + declared/inherited components and instances with `via` provenance, 404 unknown slug, viewer-readable in `packages/backend/test/integration/product-detail.test.ts`
-- [X] T018 [P] [US2] Component test: detail page renders header + 4 tabs, Composition's three labeled sections, Declared/Inherited split on Components and Instances in `packages/frontend/src/test/unit/product-detail.test.tsx`
+- [X] T017 [P] [US2] Integration test: `GET /api/v1/products/:slug` returns composition + declared/inherited components and instances with `via` provenance, 404 unknown slug, viewer-readable in `packages/backend/test/integration/products.test.ts`
+- [X] T018 [P] [US2] Component test: detail page renders header + 4 tabs, Composition's three labeled sections, Declared/Inherited split on Components and Instances in `packages/frontend/src/test/unit/products.test.tsx`
 
 ### Implementation for User Story 2
 
@@ -112,8 +112,8 @@ edge-free product.
 
 ### Tests for User Story 3 ⚠️ (write first, confirm FAIL)
 
-- [X] T022 [P] [US3] Integration test: product POST/PATCH/DELETE — 403 viewer, `SLUG_TAKEN` conflict, delete `409 REFERENCED` while edged / `204` edge-free, type change `409 TYPE_CHANGE_BLOCKED`, audit rows written in `packages/backend/test/integration/product-mutations.test.ts`
-- [X] T023 [P] [US3] Integration test: edge endpoints — COMPOSES cycle → `409 CYCLE_DETECTED`, PLATFORM parent → `422 INVALID_EDGE_TYPE`, non-PLATFORM `CONSUMES_FROM` target → `422`, DEPENDS_ON_COMPONENT add/remove, `edge_changes` rows written in `packages/backend/test/integration/product-edges.test.ts`
+- [X] T022 [P] [US3] Integration test: product POST/PATCH/DELETE — 403 viewer, `SLUG_TAKEN` conflict, delete `409 REFERENCED` while edged / `204` edge-free, type change `409 TYPE_CHANGE_BLOCKED`, audit rows written in `packages/backend/test/integration/products.test.ts`
+- [X] T023 [P] [US3] Integration test: edge endpoints — COMPOSES cycle → `409 CYCLE_DETECTED`, PLATFORM parent → `422 INVALID_EDGE_TYPE`, non-PLATFORM `CONSUMES_FROM` target → `422`, DEPENDS_ON_COMPONENT add/remove, `edge_changes` rows written in `packages/backend/test/integration/products.test.ts`
 - [X] T024 [P] [US3] Component test: create/edit dialog validation, edge-picker type filtering, 409 cycle error surfaces in dialog, destructive confirm on delete in `packages/frontend/src/test/unit/product-forms.test.tsx`
 
 ### Implementation for User Story 3
@@ -162,8 +162,8 @@ attempt deleting the referenced team (409), search "revenue" in the palette.
 
 - [X] T039 [P] Update `docs/ux.md` §3 route map — `/products/:slug`, `/lobs`, `/teams` under the Organization group; §5 product detail tabs confirmed Declared/Inherited
 - [X] T040 Register all new routes in `packages/backend/src/app.ts`; confirm 401 unauthenticated on every new route
-- [X] T041 Run full `quickstart.md` validation — all 5 scenarios + regression gate (lint/typecheck/test/build green, keyboard walkthrough of tree + pickers)
-- [X] T042 WCAG 2.1 AA sweep on new surfaces: tree keyboard expand/collapse, dialog focus management, focus-visible rings, `aria-expanded`/`aria-current`, screen-reader pass (SC-005)
+- [ ] T041 Run full `quickstart.md` validation — all 5 scenarios + regression gate (lint/typecheck/test/build green, keyboard walkthrough of tree + pickers)
+- [ ] T042 WCAG 2.1 AA sweep on new surfaces: tree keyboard expand/collapse, dialog focus management, focus-visible rings, `aria-expanded`/`aria-current`, screen-reader pass (SC-005)
 - [X] T043 `pnpm -r lint`, `pnpm -r typecheck`, `pnpm -r test`, `pnpm -r build` all green
 - [X] T044 Confirm no `sql.raw()`/`sql.fragment()`, no `dangerouslySetInnerHTML`, `safeUrl()` on all new hrefs, no secrets in logs (ADR-084/085/090)
 

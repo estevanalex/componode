@@ -45,12 +45,12 @@ export function EdgePicker({ open, onClose, target, productId, productType, onAd
     // but this product must be a legal parent (BC/CF); UI hides the action
     // otherwise. Exclude self.
     options = (productsData?.products ?? [])
-      .filter((p) => p.id !== productId)
+      .filter((p) => p.id !== productId && p.lifecycle !== "RETIRED")
       .map((p) => ({ id: p.id, label: p.name }));
     bodyKey = "childId";
   } else if (target.kind === "consumes-from") {
     options = (productsData?.products ?? [])
-      .filter((p) => p.id !== productId && p.type === "PLATFORM")
+      .filter((p) => p.id !== productId && p.type === "PLATFORM" && p.lifecycle !== "RETIRED")
       .map((p) => ({ id: p.id, label: p.name }));
     bodyKey = "platformId";
   } else {
