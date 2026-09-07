@@ -1,5 +1,6 @@
 import { type RouteObject } from "react-router-dom";
 import { AuthGuard } from "@/components/layout/auth-guard";
+import { AppShell } from "@/components/layout/app-shell";
 import { LoginPage } from "@/pages/login";
 import { RegisterPage } from "@/pages/register";
 import { OidcCallbackPage } from "@/pages/oidc-callback";
@@ -15,89 +16,33 @@ import { SettingsPage } from "@/pages/settings";
 import { SessionsPage } from "@/pages/sessions";
 import { NotFoundPage } from "@/pages/not-found";
 
+// Auth pages render outside the shell (no sidebar/top bar/palette).
+const authed = (element: React.ReactNode, requiredRole?: string) => (
+  <AuthGuard requiredRole={requiredRole}>{element}</AuthGuard>
+);
+
 export const routes: RouteObject[] = [
   { path: "/login", element: <LoginPage /> },
   { path: "/register", element: <RegisterPage /> },
   { path: "/auth/oidc/callback", element: <OidcCallbackPage /> },
   {
     path: "/",
-    element: (
-      <AuthGuard>
-        <DashboardPage />
-      </AuthGuard>
-    ),
+    element: <AppShell />,
+    children: [
+      { index: true, element: authed(<DashboardPage />) },
+      { path: "products", element: authed(<ProductsPage />) },
+      { path: "components", element: authed(<ComponentsPage />) },
+      { path: "components/:id", element: authed(<ComponentDetailPage />) },
+      { path: "component-groups", element: authed(<ComponentGroupsPage />) },
+      { path: "importers", element: authed(<ImportersPage />) },
+      {
+        path: "importers/:configId/runs/:runId",
+        element: authed(<ImporterRunPage />),
+      },
+      { path: "users", element: authed(<UsersPage />, "ADMIN") },
+      { path: "settings", element: authed(<SettingsPage />, "ADMIN") },
+      { path: "sessions", element: authed(<SessionsPage />) },
+      { path: "*", element: authed(<NotFoundPage />) },
+    ],
   },
-  {
-    path: "/products",
-    element: (
-      <AuthGuard>
-        <ProductsPage />
-      </AuthGuard>
-    ),
-  },
-  {
-    path: "/components",
-    element: (
-      <AuthGuard>
-        <ComponentsPage />
-      </AuthGuard>
-    ),
-  },
-  {
-    path: "/components/:id",
-    element: (
-      <AuthGuard>
-        <ComponentDetailPage />
-      </AuthGuard>
-    ),
-  },
-  {
-    path: "/component-groups",
-    element: (
-      <AuthGuard>
-        <ComponentGroupsPage />
-      </AuthGuard>
-    ),
-  },
-  {
-    path: "/importers",
-    element: (
-      <AuthGuard>
-        <ImportersPage />
-      </AuthGuard>
-    ),
-  },
-  {
-    path: "/importers/:configId/runs/:runId",
-    element: (
-      <AuthGuard>
-        <ImporterRunPage />
-      </AuthGuard>
-    ),
-  },
-  {
-    path: "/users",
-    element: (
-      <AuthGuard requiredRole="ADMIN">
-        <UsersPage />
-      </AuthGuard>
-    ),
-  },
-  {
-    path: "/settings",
-    element: (
-      <AuthGuard requiredRole="ADMIN">
-        <SettingsPage />
-      </AuthGuard>
-    ),
-  },
-  {
-    path: "/sessions",
-    element: (
-      <AuthGuard>
-        <SessionsPage />
-      </AuthGuard>
-    ),
-  },
-  { path: "*", element: <NotFoundPage /> },
 ];

@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useMemo, useState, useEffect } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { ChevronLeft, ChevronRight, PackageSearch } from "lucide-react";
 import { useComponents, type ComponentListFilters } from "@/api/hooks/components";
 import { ComponentFilters } from "@/components/component-filters";
 import { ComponentSearch } from "@/components/component-search";
@@ -14,33 +15,87 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { TableSkeleton } from "@/components/states/skeletons";
+import { EmptyState } from "@/components/states/empty-state";
+import { ErrorState } from "@/components/states/error-state";
+import { Forbidden } from "@/components/states/forbidden";
+import { StatusBadge } from "@/components/states/status-badge";
+import type { ApiError } from "@/api/client";
+import type { ComponentListResponse } from "@/api/types";
+
+const DEFAULT_FILTERS: ComponentListFilters = {
+  page: 1,
+  pageSize: 50,
+  sort: "name",
+  order: "asc",
+};
+
+function filtersFromSearchParams(params: URLSearchParams): ComponentListFilters {
+  return {
+    page: Number(params.get("page") || DEFAULT_FILTERS.page),
+    pageSize: Number(params.get("pageSize") || DEFAULT_FILTERS.pageSize),
+    sort: (params.get("sort") as ComponentListFilters["sort"]) || DEFAULT_FILTERS.sort!,
+    order: (params.get("order") as "asc" | "desc") || DEFAULT_FILTERS.order!,
+    category: params.get("category") ?? undefined,
+    provider: params.get("provider") ?? undefined,
+    lifecycle: params.get("lifecycle") ?? undefined,
+    status: params.get("status") ?? undefined,
+    group: params.get("group") ?? undefined,
+    search: params.get("search") ?? undefined,
+  };
+}
+
+function filtersToSearchParams(filters: ComponentListFilters): URLSearchParams {
+  const params = new URLSearchParams();
+  (Object.keys(filters) as Array<keyof ComponentListFilters>).forEach((key) => {
+    const value = filters[key];
+    if (value === undefined || value === "") return;
+    params.set(key, String(value));
+  });
+  return params;
+}
 
 export function ComponentsPage() {
-  const [filters, setFilters] = useState<ComponentListFilters>({
-    page: 1,
-    pageSize: 50,
-    sort: "name",
-    order: "asc",
+  const [searchParams, setSearchParams] = useSearchParams();
+  const filters = useMemo(() => filtersFromSearchParams(searchParams), [searchParams]);
+
+  const { data, isPending, isFetching, error, refetch } = useComponents(filters);
+
+  const [displayData, setDisplayData] = useState<ComponentListResponse["data"]>([]);
+  const [pagination, setPagination] = useState<ComponentListResponse["pagination"]>({
+    page: filters.page ?? 1,
+    pageSize: filters.pageSize ?? 50,
+    total: 0,
+    pageCount: 0,
+    hasNext: false,
   });
 
-  const { data, isLoading, error } = useComponents(filters);
-  const components = data?.data ?? [];
-  const pagination = data?.pagination ?? { page: 1, pageSize: 50, total: 0, pageCount: 0, hasNext: false };
+  useEffect(() => {
+    if (data?.data) setDisplayData(data.data);
+    if (data?.pagination) setPagination(data.pagination);
+  }, [data]);
+
+  const components = displayData;
+  const page = filters.page ?? 1;
   const total = pagination.total;
-  const page = pagination.page;
   const totalPages = Math.max(1, pagination.pageCount);
 
+  function setFilters(next: ComponentListFilters) {
+    setSearchParams(filtersToSearchParams(next));
+  }
+
   function setSearch(search: string) {
-    setFilters((f) => ({ ...f, search: search || undefined, page: 1 }));
+    setFilters({ ...filters, search: search || undefined, page: 1 });
   }
 
   function setPage(next: number) {
-    setFilters((f) => ({ ...f, page: next }));
+    setFilters({ ...filters, page: next });
   }
 
+  const isForbidden = error ? ((error as unknown) as ApiError).code === "FORBIDDEN" : false;
+
   return (
-    <div className="min-h-screen bg-background p-6">
+    <div className="bg-background p-6">
       <h1 className="text-2xl font-bold mb-4">Components</h1>
 
       <Card className="mb-6">
@@ -57,87 +112,97 @@ export function ComponentsPage() {
 
       <Card>
         <CardContent className="p-0">
-          {isLoading && (
-            <div className="p-12 text-center text-muted-foreground">Loading...</div>
+          {isPending && components.length === 0 && <TableSkeleton />}
+
+          {!isPending && isForbidden && <Forbidden />}
+
+          {!isPending && !isForbidden && error && (
+            <ErrorState error={error} onRetry={() => refetch()} />
           )}
-          {error && (
-            <div className="p-12 text-center text-destructive">
-              Failed to load components.
-            </div>
+
+          {!isPending && !error && components.length === 0 && (
+            <EmptyState
+              icon={PackageSearch}
+              title="No components found"
+              description="Run an importer to populate the catalog."
+              action={{ label: "Configure importers", to: "/importers" }}
+            />
           )}
-          {!isLoading && components.length === 0 && (
-            <div className="p-12 text-center">
-              <p className="text-muted-foreground">
-                No components found. Run an importer to populate the catalog.
-              </p>
-            </div>
-          )}
-          {!isLoading && components.length > 0 && (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Provider</TableHead>
-                  <TableHead>Resource type</TableHead>
-                  <TableHead>Lifecycle</TableHead>
-                  <TableHead>Group</TableHead>
-                  <TableHead className="text-right">Instances</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {components.map((component) => (
-                  <TableRow key={component.id}>
-                    <TableCell>
-                      <Link
-                        to={`/components/${component.id}`}
-                        className="font-medium hover:underline"
-                      >
-                        {component.name}
-                      </Link>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{component.category}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">{component.provider}</Badge>
-                    </TableCell>
-                    <TableCell>{component.resourceType}</TableCell>
-                    <TableCell>{component.lifecycle}</TableCell>
-                    <TableCell>
-                      {component.componentGroupName ?? "—"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {component.instanceCount}
-                    </TableCell>
+
+          {!isPending && !error && components.length > 0 && (
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Provider</TableHead>
+                    <TableHead>Resource type</TableHead>
+                    <TableHead>Lifecycle</TableHead>
+                    <TableHead>Group</TableHead>
+                    <TableHead className="text-right">Instances</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {components.map((component) => (
+                    <TableRow key={component.id}>
+                      <TableCell>
+                        <Link
+                          to={`/components/${component.id}`}
+                          className="font-medium hover:underline"
+                        >
+                          {component.name}
+                        </Link>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{component.category}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">{component.provider}</Badge>
+                      </TableCell>
+                      <TableCell>{component.resourceType}</TableCell>
+                      <TableCell>
+                        <StatusBadge status={component.lifecycle} />
+                      </TableCell>
+                      <TableCell>
+                        {component.componentGroupName ?? "—"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {component.instanceCount}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+
+              <div className="flex items-center justify-between p-4 border-t">
+                <p className="text-sm text-muted-foreground">
+                  {total} component{total === 1 ? "" : "s"} · Page {page} of {totalPages}
+                </p>
+                <div className="flex items-center gap-2">
+                  {isFetching && components.length > 0 && (
+                    <span className="text-xs text-muted-foreground">Updating…</span>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(page - 1)}
+                    disabled={page <= 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(page + 1)}
+                    disabled={page >= totalPages}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </>
           )}
-          <div className="flex items-center justify-between p-4 border-t">
-            <p className="text-sm text-muted-foreground">
-              {total} component{total === 1 ? "" : "s"} · Page {page} of {totalPages}
-            </p>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage(page - 1)}
-                disabled={page <= 1}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage(page + 1)}
-                disabled={page >= totalPages}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
         </CardContent>
       </Card>
     </div>

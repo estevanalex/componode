@@ -41,7 +41,7 @@ and every product depends on Components.
 | Document | Role |
 |---|---|
 | `.specify/memory/constitution.md` | **7 binding principles that govern every spec** |
-| `researches/architecture-decisions.md` | **ADR index — 102 ratified decisions** |
+| `researches/architecture-decisions.md` | **ADR index — 103 ratified decisions** |
 | `researches/adrs/ADR-XXX-*.md` | **Individual ADRs for every rule in this file** |
 | `specs/{NNN-feature-name}/spec.md` | **Feature specifications (authoritative for current work)** |
 | `specs/{NNN-feature-name}/plan.md` | **Implementation plan for the current feature** |
@@ -97,11 +97,12 @@ Constraints and the relevant ADRs.
 │   └── importer-web-url/
 ├── researches/                    # Architecture research and decisions
 │   ├── architecture-decisions.md  # ADR index
-│   └── adrs/                      # 102 individual ADR files
+│   └── adrs/                      # 103 individual ADR files
 ├── specs/                         # DYNAMIC — created per feature
 │   └── {NNN-feature-name}/        # spec.md, plan.md, tasks.md, ...
 ├── docs/
 │   ├── importer-development.md    # Importer contributor contract
+│   ├── ux.md                      # Normative UX/UI reference
 │   ├── data-model.md              # Schema, entities, relationships
 │   └── deployment.md              # Docker Compose self-hosting
 ├── docker-compose.yml
@@ -249,5 +250,6 @@ artifact, the more specific document wins.
 | `specs/{NNN-feature-name}/plan.md` | Before `speckit-tasks` for that feature |
 | `specs/{NNN-feature-name}/tasks.md` | During `speckit-implement` |
 | `docs/importer-development.md` | When building or editing an importer |
+| `docs/ux.md` | Before writing or reviewing any frontend spec or UI code |
 | `docs/data-model.md` | When changing schema or entities |
 | `docs/deployment.md` | When changing Docker Compose or deployment |

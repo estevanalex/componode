@@ -65,6 +65,8 @@ export {
   updateComponentGroupSchema,
   listComponentGroupsQuerySchema,
 } from "./schemas/components.js";
+export { searchQuerySchema } from "./schemas/search.js";
+export type { SearchQuery } from "./schemas/search.js";
 export type {
   ListComponentsQuery,
   UpdateComponentGroupAssignmentInput,

@@ -140,6 +140,51 @@ export interface ComponentWithInstances extends Component {
   instances: ComponentInstance[];
 }
 
+export interface AttentionItem {
+  kind: "FAILED_RUN" | "INSTANCE_ERROR" | "INSTANCE_GONE";
+  label: string;
+  href: string;
+  at: string;
+}
+
+export interface ImporterRunStatus {
+  configId: string;
+  importerName: string;
+  configLabel: string;
+  runId: string | null;
+  status: ImportRunStatus | null;
+  completedAt: string | null;
+  assetsProcessed: number;
+  assetsCreated: number;
+  assetsUpdated: number;
+}
+
+export interface DashboardSummary {
+  counts: {
+    products: { total: number; byType: Record<string, number> };
+    components: { total: number; byLifecycle: Record<string, number> };
+    instances: { total: number; byStatus: Record<string, number> };
+  };
+  lastImportAt: string | null;
+  attention: AttentionItem[];
+  lastRuns: ImporterRunStatus[];
+}
+
+export interface SearchHit {
+  id: string;
+  name: string;
+  slug: string | null;
+  kind: "component" | "product" | "group" | "importer";
+  href: string;
+}
+
+export interface SearchResults {
+  components: SearchHit[];
+  products: SearchHit[];
+  groups: SearchHit[];
+  importers: SearchHit[];
+}
+
 export interface ComponentListResponse {
   data: Component[];
   pagination: {

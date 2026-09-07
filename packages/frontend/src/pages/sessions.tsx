@@ -1,79 +1,116 @@
-import { useState, useEffect } from "react";
-import { api, type ApiError } from "@/api/client";
-
-interface Session {
-  id: string;
-  createdAt: string;
-  lastSeenAt: string;
-  expiresAt: string;
-}
+import { useState } from "react";
+import { Monitor } from "lucide-react";
+import { useSessions, useRevokeSession } from "@/api/hooks/sessions";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { TableSkeleton } from "@/components/states/skeletons";
+import { EmptyState } from "@/components/states/empty-state";
+import { ErrorState } from "@/components/states/error-state";
+import { Forbidden } from "@/components/states/forbidden";
+import { relativeTime, absoluteTime } from "@/lib/format";
+import type { ApiError } from "@/api/client";
 
 export function SessionsPage() {
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data, isPending, isFetching, error, refetch } = useSessions();
+  const revoke = useRevokeSession();
+  const [revokeError, setRevokeError] = useState<string | null>(null);
 
-  async function loadSessions() {
-    try {
-      const data = await api<{ sessions: Session[] }>("/sessions");
-      setSessions(data.sessions);
-      setLoading(false);
-    } catch (err) {
-      setError((err as ApiError).message ?? "Failed to load sessions");
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    loadSessions();
-  }, []);
+  const sessions = data?.sessions ?? [];
+  const isForbidden = error ? ((error as unknown) as ApiError).code === "FORBIDDEN" : false;
 
   async function handleRevoke(id: string) {
+    setRevokeError(null);
     try {
-      await api(`/sessions/${id}/revoke`, { method: "POST" });
-      loadSessions();
+      await revoke.mutateAsync(id);
     } catch (err) {
-      setError((err as ApiError).message ?? "Failed to revoke session");
+      setRevokeError((err as ApiError).message ?? "Failed to revoke session");
     }
   }
 
-  if (loading) return <div className="p-6">Loading...</div>;
-
   return (
-    <div className="min-h-screen bg-background p-6">
+    <div className="bg-background p-6">
       <h1 className="text-2xl font-bold mb-4">Active Sessions</h1>
-      {error && <p className="text-destructive mb-4">{error}</p>}
-      {sessions.length === 0 ? (
-        <p className="text-muted-foreground">No active sessions.</p>
-      ) : (
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="border-b">
-              <th className="text-left py-2 px-4">Created</th>
-              <th className="text-left py-2 px-4">Last Seen</th>
-              <th className="text-left py-2 px-4">Expires</th>
-              <th className="text-left py-2 px-4">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sessions.map((session) => (
-              <tr key={session.id} className="border-b">
-                <td className="py-2 px-4">{new Date(session.createdAt).toLocaleString()}</td>
-                <td className="py-2 px-4">{new Date(session.lastSeenAt).toLocaleString()}</td>
-                <td className="py-2 px-4">{new Date(session.expiresAt).toLocaleString()}</td>
-                <td className="py-2 px-4">
-                  <button
-                    onClick={() => handleRevoke(session.id)}
-                    className="text-destructive hover:underline"
-                  >
-                    Revoke
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+
+      {isFetching && !isPending && sessions.length > 0 && (
+        <p className="mb-2 text-xs text-muted-foreground">Updating…</p>
       )}
+
+      {revokeError && (
+        <p className="text-sm text-destructive mb-4">{revokeError}</p>
+      )}
+
+      <Card>
+        <CardContent className="p-0">
+          {isPending && sessions.length === 0 && <TableSkeleton />}
+
+          {!isPending && isForbidden && <Forbidden />}
+
+          {!isPending && !isForbidden && error && (
+            <ErrorState error={error} onRetry={() => refetch()} />
+          )}
+
+          {!isPending && !error && sessions.length === 0 && (
+            <EmptyState
+              icon={Monitor}
+              title="No active sessions"
+              description="There are no active sessions on this account."
+            />
+          )}
+
+          {!isPending && !error && sessions.length > 0 && (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Created</TableHead>
+                  <TableHead>Last Seen</TableHead>
+                  <TableHead>Expires</TableHead>
+                  <TableHead className="w-24">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sessions.map((session) => (
+                  <TableRow key={session.id}>
+                    <TableCell>
+                      <span title={absoluteTime(session.createdAt)}>
+                        {relativeTime(session.createdAt)}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span title={absoluteTime(session.lastSeenAt)}>
+                        {relativeTime(session.lastSeenAt)}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span title={absoluteTime(session.expiresAt)}>
+                        {relativeTime(session.expiresAt)}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => handleRevoke(session.id)}
+                        disabled={revoke.isPending}
+                      >
+                        Revoke
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
