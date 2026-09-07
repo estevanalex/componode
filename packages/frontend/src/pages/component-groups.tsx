@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pencil, Trash2, Plus, Link2 } from "lucide-react";
+import { Pencil, Trash2, Plus, Link2, Group } from "lucide-react";
 import { useSession } from "@/api/hooks/auth";
 import {
   useComponentGroups,
@@ -11,7 +11,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -26,7 +25,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { TableSkeleton } from "@/components/states/skeletons";
+import { EmptyState } from "@/components/states/empty-state";
+import { ErrorState } from "@/components/states/error-state";
+import { Forbidden } from "@/components/states/forbidden";
+import { StatusBadge } from "@/components/states/status-badge";
+import { MONO_CLASS } from "@/lib/format";
 import type { ComponentGroup } from "@/api/types";
+import type { ApiError } from "@/api/client";
 
 const ROLE_LEVEL: Record<string, number> = {
   VIEWER: 0,
@@ -42,7 +48,7 @@ export function ComponentGroupsPage() {
   const { data: user } = useSession();
   const editor = canEdit(user?.role);
 
-  const { data, isLoading, error } = useComponentGroups();
+  const { data, isPending, error, refetch } = useComponentGroups();
   const groups = data?.groups ?? [];
 
   const create = useCreateComponentGroup();
@@ -108,8 +114,10 @@ export function ComponentGroupsPage() {
     setAssignForm({ componentId: "", groupId: "" });
   }
 
+  const isForbidden = error ? ((error as unknown) as ApiError).code === "FORBIDDEN" : false;
+
   return (
-    <div className="min-h-screen bg-background p-6">
+    <div className="bg-background p-6">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">Component Groups</h1>
         {editor && (
@@ -120,61 +128,68 @@ export function ComponentGroupsPage() {
         )}
       </div>
 
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="text-base">Assign component</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap items-end gap-3">
-            <Input
-              placeholder="Component ID"
-              value={assignForm.componentId}
-              onChange={(e) =>
-                setAssignForm((f) => ({ ...f, componentId: e.target.value }))
-              }
-              className="w-72"
-            />
-            <select
-              value={assignForm.groupId}
-              onChange={(e) =>
-                setAssignForm((f) => ({ ...f, groupId: e.target.value }))
-              }
-              className="h-10 w-48 rounded-md border border-input bg-background px-3 text-sm"
-            >
-              <option value="">No group</option>
-              {groups.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.name}
-                </option>
-              ))}
-            </select>
-            <Button
-              onClick={handleAssign}
-              disabled={!assignForm.componentId || assign.isPending}
-            >
-              <Link2 className="h-4 w-4 mr-2" />
-              Assign
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      {editor && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="text-base">Assign component</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap items-end gap-3">
+              <Input
+                placeholder="Component ID"
+                value={assignForm.componentId}
+                onChange={(e) =>
+                  setAssignForm((f) => ({ ...f, componentId: e.target.value }))
+                }
+                className="w-72"
+              />
+              <select
+                value={assignForm.groupId}
+                onChange={(e) =>
+                  setAssignForm((f) => ({ ...f, groupId: e.target.value }))
+                }
+                className="h-10 w-48 rounded-md border border-input bg-background px-3 text-sm"
+                disabled={isPending}
+              >
+                <option value="">No group</option>
+                {groups.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name}
+                  </option>
+                ))}
+              </select>
+              <Button
+                onClick={handleAssign}
+                disabled={!assignForm.componentId || assign.isPending || isPending}
+              >
+                <Link2 className="h-4 w-4 mr-2" />
+                Assign
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardContent className="p-0">
-          {isLoading && (
-            <div className="p-12 text-center text-muted-foreground">Loading...</div>
+          {isPending && groups.length === 0 && <TableSkeleton />}
+
+          {!isPending && isForbidden && <Forbidden />}
+
+          {!isPending && !isForbidden && error && (
+            <ErrorState error={error} onRetry={() => refetch()} />
           )}
-          {error && (
-            <div className="p-12 text-center text-destructive">
-              Failed to load component groups.
-            </div>
+
+          {!isPending && !error && groups.length === 0 && (
+            <EmptyState
+              icon={Group}
+              title="No component groups yet"
+              description="Create a group to organize components."
+              action={editor ? { label: "Add group", onClick: openCreate } : undefined}
+            />
           )}
-          {groups.length === 0 && !isLoading && (
-            <div className="p-12 text-center text-muted-foreground">
-              No component groups yet.
-            </div>
-          )}
-          {groups.length > 0 && (
+
+          {!isPending && !error && groups.length > 0 && (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -188,15 +203,11 @@ export function ComponentGroupsPage() {
                 {groups.map((group) => (
                   <TableRow key={group.id}>
                     <TableCell className="font-medium">{group.name}</TableCell>
-                    <TableCell>{group.slug}</TableCell>
                     <TableCell>
-                      <Badge
-                        variant={
-                          group.lifecycle === "ACTIVE" ? "default" : "secondary"
-                        }
-                      >
-                        {group.lifecycle}
-                      </Badge>
+                      <span className={MONO_CLASS}>{group.slug}</span>
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge status={group.lifecycle} />
                     </TableCell>
                     <TableCell className="flex gap-2">
                       {editor && (

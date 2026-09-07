@@ -1,9 +1,44 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  QueryClient,
+  QueryClientProvider,
+  QueryCache,
+  MutationCache,
+} from "@tanstack/react-query";
 import { RouterProvider, createBrowserRouter } from "react-router-dom";
+import { toast } from "sonner";
 import { routes } from "./routes";
+import { ThemeProvider } from "@/components/theme-provider";
+import { Toaster } from "@/components/ui/sonner";
+import type { ApiError } from "@/api/client";
+
+// Global default error UX per ADR-072: 401 → login redirect, 403 → permission
+// toast, 429 → rate-limit toast, 500 → generic toast. Mutations that need
+// inline field errors (422) handle their own onError.
+function handleGlobalError(error: unknown) {
+  const err = error as ApiError & { status?: number };
+  if (err?.code === "AUTH_NO_SESSION") {
+    if (window.location.pathname !== "/login") {
+      window.location.assign("/login");
+    }
+    return;
+  }
+  if (err?.code === "FORBIDDEN") {
+    toast.error("You don't have permission to do that.");
+    return;
+  }
+  if (err?.code === "RATE_LIMITED") {
+    toast.warning("Rate limited — retrying shortly.");
+    return;
+  }
+  // 422 field errors are handled locally by form mutations.
+  if (err?.code === "VALIDATION_FAILED") return;
+  toast.error("Something went wrong. Please try again.");
+}
 
 const queryClient = new QueryClient({
+  queryCache: new QueryCache({ onError: handleGlobalError }),
+  mutationCache: new MutationCache({ onError: handleGlobalError }),
   defaultOptions: {
     queries: {
       staleTime: 60_000,
@@ -28,7 +63,6 @@ class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryStat
   }
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
-    // eslint-disable-next-line no-console
     console.error("Uncaught render error:", error, info);
   }
 
@@ -67,9 +101,12 @@ class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryStat
 export function App() {
   return (
     <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router} />
-      </QueryClientProvider>
+      <ThemeProvider>
+        <QueryClientProvider client={queryClient}>
+          <RouterProvider router={router} />
+          <Toaster richColors={false} position="bottom-right" />
+        </QueryClientProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }

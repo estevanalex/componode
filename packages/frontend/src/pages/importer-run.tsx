@@ -1,5 +1,5 @@
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, RefreshCw, Square, Clock, AlertCircle } from "lucide-react";
+import { ArrowLeft, RefreshCw, Square, Clock } from "lucide-react";
 import {
   useImporterRun,
   useCancelImportRun,
@@ -7,7 +7,6 @@ import {
 } from "@/api/hooks/importers";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -17,29 +16,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import type { ImportRun, ImportRunError } from "@/api/types";
-
-function statusBadge(status: ImportRun["status"]) {
-  switch (status) {
-    case "COMPLETED":
-      return <Badge variant="secondary">{status}</Badge>;
-    case "RUNNING":
-      return <Badge className="bg-blue-600 hover:bg-blue-600">{status}</Badge>;
-    case "PENDING":
-      return <Badge variant="outline">{status}</Badge>;
-    case "FAILED":
-    case "INTERRUPTED":
-    case "CANCELLED":
-      return <Badge variant="destructive">{status}</Badge>;
-    default:
-      return <Badge variant="outline">{status}</Badge>;
-  }
-}
-
-function formatDate(value: string | null | undefined): string {
-  if (!value) return "—";
-  return new Date(value).toLocaleString();
-}
+import { PageSkeleton, TableSkeleton } from "@/components/states/skeletons";
+import { ErrorState } from "@/components/states/error-state";
+import { Forbidden } from "@/components/states/forbidden";
+import { StatusBadge } from "@/components/states/status-badge";
+import { relativeTime, absoluteTime, MONO_CLASS } from "@/lib/format";
+import { useSetCrumbLabel } from "@/components/layout/crumb-context";
+import type { ImportRunError } from "@/api/types";
+import type { ApiError } from "@/api/client";
 
 export function ImporterRunPage() {
   const { configId, runId } = useParams<{
@@ -47,17 +31,31 @@ export function ImporterRunPage() {
     runId: string;
   }>();
 
-  const { data, isLoading, error } = useImporterRun(configId ?? null, runId ?? null);
-  const { data: errorsData } = useImportRunErrors(configId ?? null, runId ?? null);
+  const {
+    data,
+    isPending,
+    isFetching,
+    error,
+    refetch,
+  } = useImporterRun(configId ?? null, runId ?? null);
+  const {
+    data: errorsData,
+    isPending: errorsPending,
+    isFetching: errorsFetching,
+    error: errorsError,
+    refetch: refetchErrors,
+  } = useImportRunErrors(configId ?? null, runId ?? null);
   const cancel = useCancelImportRun();
 
   const run = data?.run;
   const errors = errorsData?.errors ?? [];
+  useSetCrumbLabel(runId ? `run-${runId.slice(-8)}` : null);
 
   const isActive = run?.status === "PENDING" || run?.status === "RUNNING";
+  const isForbidden = error ? ((error as unknown) as ApiError).code === "FORBIDDEN" : false;
 
   return (
-    <div className="min-h-screen bg-background p-6">
+    <div className="bg-background p-6">
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" asChild>
@@ -87,19 +85,32 @@ export function ImporterRunPage() {
           )}
         </div>
 
-        {isLoading ? (
-          <p className="text-muted-foreground">Loading…</p>
-        ) : error ? (
-          <p className="text-destructive">Failed to load run.</p>
-        ) : !run ? (
-          <p className="text-muted-foreground">Run not found.</p>
-        ) : (
+        {isPending && !run && <PageSkeleton />}
+
+        {!isPending && isForbidden && <Forbidden />}
+
+        {!isPending && !isForbidden && error && (
+          <ErrorState error={error} onRetry={() => refetch()} />
+        )}
+
+        {!isPending && !error && !run && (
+          <ErrorState
+            title="Run not found"
+            onRetry={() => refetch()}
+          />
+        )}
+
+        {!isPending && !error && run && (
           <>
+            {isFetching && (
+              <p className="text-xs text-muted-foreground">Updating…</p>
+            )}
+
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg">Status</CardTitle>
-                  {statusBadge(run.status)}
+                  <StatusBadge status={run.status} />
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -112,7 +123,6 @@ export function ImporterRunPage() {
 
                 {run.errorMessage && (
                   <div className="flex items-start gap-2 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
-                    <AlertCircle className="w-4 h-4 mt-0.5" />
                     <span>{run.errorMessage}</span>
                   </div>
                 )}
@@ -133,37 +143,64 @@ export function ImporterRunPage() {
               </CardContent>
             </Card>
 
-            {errors.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Run errors</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Asset</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Message</TableHead>
-                        <TableHead>Time</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {errors.map((err: ImportRunError) => (
-                        <TableRow key={err.id}>
-                          <TableCell>{err.assetExternalId ?? "—"}</TableCell>
-                          <TableCell>{err.errorType}</TableCell>
-                          <TableCell className="max-w-md truncate">
-                            {err.errorMessage}
-                          </TableCell>
-                          <TableCell>{formatDate(err.createdAt)}</TableCell>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Run errors</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {errorsPending && errors.length === 0 && <TableSkeleton rows={3} columns={4} />}
+
+                {!errorsPending && errorsError && (
+                  <ErrorState
+                    error={errorsError}
+                    onRetry={() => refetchErrors()}
+                    title="Failed to load run errors"
+                  />
+                )}
+
+                {!errorsPending && !errorsError && errors.length === 0 && (
+                  <p className="text-sm text-muted-foreground">No run errors.</p>
+                )}
+
+                {!errorsPending && !errorsError && errors.length > 0 && (
+                  <>
+                    {errorsFetching && (
+                      <p className="mb-2 text-xs text-muted-foreground">Updating…</p>
+                    )}
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Asset</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead>Message</TableHead>
+                          <TableHead>Time</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            )}
+                      </TableHeader>
+                      <TableBody>
+                        {errors.map((err: ImportRunError) => (
+                          <TableRow key={err.id}>
+                            <TableCell>
+                              <span className={MONO_CLASS}>
+                                {err.assetExternalId ?? "—"}
+                              </span>
+                            </TableCell>
+                            <TableCell>{err.errorType}</TableCell>
+                            <TableCell className="max-w-md truncate">
+                              {err.errorMessage}
+                            </TableCell>
+                            <TableCell>
+                              <span title={absoluteTime(err.createdAt)}>
+                                {relativeTime(err.createdAt)}
+                              </span>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </>
+                )}
+              </CardContent>
+            </Card>
           </>
         )}
       </div>
@@ -185,7 +222,7 @@ function DateField({ label, value }: { label: string; value: string | null | und
     <div className="flex items-center gap-2">
       <Clock className="w-4 h-4 text-muted-foreground" />
       <span className="text-muted-foreground">{label}:</span>
-      <span>{formatDate(value)}</span>
+      <span title={absoluteTime(value)}>{relativeTime(value)}</span>
     </div>
   );
 }

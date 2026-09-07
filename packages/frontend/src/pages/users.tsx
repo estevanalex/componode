@@ -1,69 +1,91 @@
-import { useState, useEffect } from "react";
-import { api, type ApiError } from "@/api/client";
-
-interface User {
-  id: string;
-  username: string;
-  role: string;
-  displayName: string | null;
-  email: string | null;
-  isActive: boolean;
-  createdAt: string;
-}
+import { Users } from "lucide-react";
+import { useUsers } from "@/api/hooks/users";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { TableSkeleton } from "@/components/states/skeletons";
+import { EmptyState } from "@/components/states/empty-state";
+import { ErrorState } from "@/components/states/error-state";
+import { Forbidden } from "@/components/states/forbidden";
+import { StatusBadge } from "@/components/states/status-badge";
+import { relativeTime, absoluteTime } from "@/lib/format";
+import type { ApiError } from "@/api/client";
 
 export function UsersPage() {
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data, isPending, isFetching, error, refetch } = useUsers();
+  const users = data?.users ?? [];
 
-  useEffect(() => {
-    api<{ users: User[] }>("/users")
-      .then((data) => {
-        setUsers(data.users);
-        setLoading(false);
-      })
-      .catch((err: ApiError) => {
-        setError(err.message ?? "Failed to load users");
-        setLoading(false);
-      });
-  }, []);
-
-  if (loading) return <div className="p-6">Loading...</div>;
-  if (error) return <div className="p-6 text-destructive">{error}</div>;
+  const isForbidden = error ? ((error as unknown) as ApiError).code === "FORBIDDEN" : false;
 
   return (
-    <div className="min-h-screen bg-background p-6">
+    <div className="bg-background p-6">
       <h1 className="text-2xl font-bold mb-4">Users</h1>
-      <table className="w-full border-collapse">
-        <thead>
-          <tr className="border-b">
-            <th className="text-left py-2 px-4">Username</th>
-            <th className="text-left py-2 px-4">Role</th>
-            <th className="text-left py-2 px-4">Display Name</th>
-            <th className="text-left py-2 px-4">Email</th>
-            <th className="text-left py-2 px-4">Status</th>
-            <th className="text-left py-2 px-4">Created</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map((user) => (
-            <tr key={user.id} className="border-b">
-              <td className="py-2 px-4">{user.username}</td>
-              <td className="py-2 px-4">{user.role}</td>
-              <td className="py-2 px-4">{user.displayName ?? "—"}</td>
-              <td className="py-2 px-4">{user.email ?? "—"}</td>
-              <td className="py-2 px-4">
-                {user.isActive ? (
-                  <span className="text-green-600">Active</span>
-                ) : (
-                  <span className="text-muted-foreground">Inactive</span>
-                )}
-              </td>
-              <td className="py-2 px-4">{new Date(user.createdAt).toLocaleDateString()}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+
+      {isFetching && !isPending && users.length > 0 && (
+        <p className="mb-2 text-xs text-muted-foreground">Updating…</p>
+      )}
+
+      <Card>
+        <CardContent className="p-0">
+          {isPending && users.length === 0 && <TableSkeleton />}
+
+          {!isPending && isForbidden && <Forbidden />}
+
+          {!isPending && !isForbidden && error && (
+            <ErrorState error={error} onRetry={() => refetch()} />
+          )}
+
+          {!isPending && !error && users.length === 0 && (
+            <EmptyState
+              icon={Users}
+              title="No users found"
+              description="There are no user accounts on this instance."
+            />
+          )}
+
+          {!isPending && !error && users.length > 0 && (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Username</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Display Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Created</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {users.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell className="font-medium">{user.username}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{user.role}</Badge>
+                    </TableCell>
+                    <TableCell>{user.displayName ?? "—"}</TableCell>
+                    <TableCell>{user.email ?? "—"}</TableCell>
+                    <TableCell>
+                      <StatusBadge status={user.isActive ? "ACTIVE" : "RETIRED"} />
+                    </TableCell>
+                    <TableCell>
+                      <span title={absoluteTime(user.createdAt)}>
+                        {relativeTime(user.createdAt)}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

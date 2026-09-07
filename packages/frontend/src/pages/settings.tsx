@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Card,
   CardContent,
@@ -16,6 +17,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { ErrorState } from "@/components/states/error-state";
+import { Forbidden } from "@/components/states/forbidden";
 
 const ROLES: UserRole[] = ["VIEWER", "EDITOR", "ADMIN"];
 
@@ -23,33 +26,79 @@ function errMessage(err: unknown, fallback: string): string {
   return (err as ApiError).message ?? fallback;
 }
 
+function isForbidden(err: unknown): boolean {
+  return (err as ApiError).code === "FORBIDDEN";
+}
+
+function FormCardSkeleton({ title }: { title: string }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <Skeleton className="h-4 w-3/4" />
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-9 w-1/2" />
+      </CardContent>
+    </Card>
+  );
+}
+
 export function SettingsPage() {
-  const { data: settingsData, isLoading: settingsLoading } = useSettings();
+  const {
+    data: rawSettingsData,
+    isPending: settingsPending,
+    error: settingsError,
+    refetch: refetchSettings,
+  } = useSettings();
+  const settingsData = rawSettingsData as { settings?: AppSettings } | undefined;
   const updateSettings = useUpdateSettings();
 
-  const { data: oidcData, isLoading: oidcLoading } = useOidcConfig();
+  const {
+    data: rawOidcData,
+    isPending: oidcPending,
+    error: oidcError,
+    refetch: refetchOidc,
+  } = useOidcConfig();
+  const oidcData = rawOidcData as { oidc?: OidcConfig } | undefined;
   const updateOidc = useUpdateOidcConfig();
 
   const changePassword = useChangePassword();
 
   return (
-    <div className="min-h-screen bg-background p-6">
+    <div className="bg-background p-6">
       <h1 className="text-2xl font-bold mb-6">Settings</h1>
 
       <div className="space-y-6 max-w-2xl">
-        <AppSettingsCard
-          settings={settingsData?.settings}
-          loading={settingsLoading}
-          saving={updateSettings.isPending}
-          onSave={(vars) => updateSettings.mutateAsync(vars)}
-        />
+        {settingsError && isForbidden(settingsError) ? (
+          <Forbidden />
+        ) : settingsPending && !settingsData?.settings ? (
+          <FormCardSkeleton title="Application Settings" />
+        ) : settingsError ? (
+          <ErrorState error={settingsError} onRetry={() => refetchSettings()} />
+        ) : (
+          <AppSettingsCard
+            settings={settingsData?.settings}
+            saving={updateSettings.isPending}
+            onSave={(vars) => updateSettings.mutateAsync(vars)}
+          />
+        )}
 
-        <OidcConfigCard
-          config={oidcData?.oidc}
-          loading={oidcLoading}
-          saving={updateOidc.isPending}
-          onSave={(vars) => updateOidc.mutateAsync(vars)}
-        />
+        {oidcError && isForbidden(oidcError) ? (
+          <Forbidden />
+        ) : oidcPending && !oidcData?.oidc ? (
+          <FormCardSkeleton title="OIDC Configuration" />
+        ) : oidcError ? (
+          <ErrorState error={oidcError} onRetry={() => refetchOidc()} />
+        ) : (
+          <OidcConfigCard
+            config={oidcData?.oidc}
+            saving={updateOidc.isPending}
+            onSave={(vars) => updateOidc.mutateAsync(vars)}
+          />
+        )}
 
         <PasswordChangeCard
           saving={changePassword.isPending}
@@ -66,12 +115,11 @@ export function SettingsPage() {
 
 interface AppSettingsCardProps {
   settings?: AppSettings;
-  loading: boolean;
   saving: boolean;
   onSave: (vars: AppSettings) => Promise<unknown>;
 }
 
-function AppSettingsCard({ settings, loading, saving, onSave }: AppSettingsCardProps) {
+function AppSettingsCard({ settings, saving, onSave }: AppSettingsCardProps) {
   const [form, setForm] = useState<AppSettings | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -80,7 +128,6 @@ function AppSettingsCard({ settings, loading, saving, onSave }: AppSettingsCardP
     if (settings) setForm(settings);
   }, [settings]);
 
-  if (loading) return <CardSkeleton title="Application Settings" />;
   if (!form) return null;
 
   async function submit(e: FormEvent) {
@@ -175,12 +222,11 @@ function AppSettingsCard({ settings, loading, saving, onSave }: AppSettingsCardP
 
 interface OidcConfigCardProps {
   config?: OidcConfig;
-  loading: boolean;
   saving: boolean;
   onSave: (vars: OidcConfig) => Promise<unknown>;
 }
 
-function OidcConfigCard({ config, loading, saving, onSave }: OidcConfigCardProps) {
+function OidcConfigCard({ config, saving, onSave }: OidcConfigCardProps) {
   const [form, setForm] = useState<OidcConfig | null>(null);
   const [mappingText, setMappingText] = useState("{}");
   const [mappingError, setMappingError] = useState<string | null>(null);
@@ -194,7 +240,6 @@ function OidcConfigCard({ config, loading, saving, onSave }: OidcConfigCardProps
     }
   }, [config]);
 
-  if (loading) return <CardSkeleton title="OIDC Configuration" />;
   if (!form) return null;
 
   async function submit(e: FormEvent) {
@@ -408,23 +453,6 @@ function PasswordChangeCard({ saving, onSubmit }: PasswordChangeCardProps) {
             {saving ? "Changing…" : "Change password"}
           </Button>
         </form>
-      </CardContent>
-    </Card>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Helpers                                                             */
-/* ------------------------------------------------------------------ */
-
-function CardSkeleton({ title }: { title: string }) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="text-sm text-muted-foreground">Loading…</p>
       </CardContent>
     </Card>
   );
