@@ -11,6 +11,12 @@ import {
 } from "@/api/hooks/products";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -55,6 +61,7 @@ export function ProductDetailPage() {
   const [tab, setTab] = useState<Tab>("overview");
   const [editOpen, setEditOpen] = useState(false);
   const [edgePicker, setEdgePicker] = useState<EdgeTarget | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const update = useUpdateProduct();
@@ -84,6 +91,7 @@ export function ProductDetailPage() {
 
   async function handleDelete() {
     try {
+      setConfirmDelete(false);
       await del.mutateAsync(product!.id);
       navigate("/products");
     } catch (err) {
@@ -198,37 +206,49 @@ export function ProductDetailPage() {
     );
   }
 
+  // Spec 005 US2/AC4: instances grouped by environment.
   function instanceTable(rows: InstanceDepRef[]) {
-    return rows.length === 0 ? (
-      <p className="text-sm text-muted-foreground">None.</p>
-    ) : (
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Component</TableHead>
-            <TableHead>Environment</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Region</TableHead>
-            <TableHead>Via</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rows.map((i) => (
-            <TableRow key={i.id}>
-              <TableCell className="font-medium">{i.componentName}</TableCell>
-              <TableCell>{i.environment}</TableCell>
-              <TableCell>
-                <StatusBadge status={i.status} />
-              </TableCell>
-              <TableCell>{i.region ?? "—"}</TableCell>
-              <TableCell className="text-muted-foreground">
-                {i.via ? i.via.name : "—"}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    );
+    if (rows.length === 0)
+      return <p className="text-sm text-muted-foreground">None.</p>;
+    const byEnv = new Map<string, InstanceDepRef[]>();
+    for (const i of rows) {
+      const env = i.environment ?? "UNSPECIFIED";
+      if (!byEnv.has(env)) byEnv.set(env, []);
+      byEnv.get(env)!.push(i);
+    }
+    return [...byEnv.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([env, items]) => (
+        <div key={env} className="mb-4">
+          <h3 className="mb-1.5 text-sm font-semibold text-muted-foreground">
+            {env}
+          </h3>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Component</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Region</TableHead>
+                <TableHead>Via</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {items.map((i) => (
+                <TableRow key={i.id}>
+                  <TableCell className="font-medium">{i.componentName}</TableCell>
+                  <TableCell>
+                    <StatusBadge status={i.status} />
+                  </TableCell>
+                  <TableCell>{i.region ?? "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {i.via ? i.via.name : "—"}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      ));
   }
 
   return (
@@ -281,7 +301,7 @@ export function ProductDetailPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleDelete}
+                onClick={() => setConfirmDelete(true)}
                 disabled={del.isPending}
               >
                 <Trash2 className="mr-1 h-4 w-4 text-destructive" /> Delete
@@ -403,6 +423,29 @@ export function ProductDetailPage() {
         onClose={() => setEditOpen(false)}
         product={product}
       />
+      <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete {product.name}?</DialogTitle>
+          </DialogHeader>
+          <p className="py-2 text-sm text-muted-foreground">
+            Hard delete is only allowed while the product has no edges;
+            otherwise it must be retired instead. This cannot be undone.
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setConfirmDelete(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={del.isPending}
+            >
+              {del.isPending ? "Deleting…" : "Delete"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       {edgePicker && (
         <EdgePicker
           open

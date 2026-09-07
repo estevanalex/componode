@@ -89,7 +89,7 @@ edge, and a component dependency ‚Äî every tab renders the contract shape.
 ### Tests for User Story 2 ‚ö†Ô∏è (write first, confirm FAIL)
 
 - [X] T017 [P] [US2] Integration test: `GET /api/v1/products/:slug` returns composition + declared/inherited components and instances with `via` provenance, 404 unknown slug, viewer-readable in `packages/backend/test/integration/products.test.ts`
-- [X] T018 [P] [US2] Component test: detail page renders header + 4 tabs, Composition's three labeled sections, Declared/Inherited split on Components and Instances in `packages/frontend/src/test/unit/products.test.tsx`
+- [X] T018 [P] [US2] Component test: detail page renders header + 4 tabs, Composition's three labeled sections, Declared/Inherited split on Components and Instances in `packages/frontend/src/test/unit/product-detail.test.tsx`
 
 ### Implementation for User Story 2
 
@@ -205,3 +205,10 @@ US1 (tree) ‚Üí US2 (detail) ‚Üí US3 (curation) ‚Üí US4 (org) ‚Üí polish.
 - Depends on the 004 shell being merged (sidebar, palette, state matrix, crumb context)
 - New error codes `CYCLE_DETECTED`, `INVALID_EDGE_TYPE`, `REFERENCED`, `TYPE_CHANGE_BLOCKED`, `SLUG_TAKEN` must be added to the controlled error-code enum in `packages/core` (ADR-071)
 - Commit after each task or logical group
+
+## Phase 8: Convergence
+
+- [X] T045 [US2] Group the Instances tab rows by `environment` (environment subheadings + status badges) per US2/AC4 ó currently a flat table in `packages/frontend/src/pages/product-detail.tsx` (partial)
+- [X] T046 [US3] Add a confirmation step before product delete in `packages/frontend/src/pages/product-detail.tsx` per the destructive-action pattern in docs/ux.md ß8 (partial)
+- [ ] T047 Execute `specs/005-product-hierarchy/quickstart.md` end-to-end against a running `docker compose` stack ó all 5 scenarios per T041 (missing)
+- [ ] T048 Perform the WCAG 2.1 AA sweep on new surfaces ó tree keyboard expand/collapse, dialog focus management, focus-visible rings, `aria-expanded`, screen-reader pass per T042 / SC-005 (missing)
