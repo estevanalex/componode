@@ -1,0 +1,1914 @@
+openapi: 3.0.3
+info:
+  title: Componode API
+  version: 1.0.0
+  description: |
+    Componode is an open-source, self-hosted Digital Product Asset Management
+    (DPAM) tool. This document describes the REST API exposed by the backend
+    (`packages/backend`).
+
+    ## Authentication
+    Most endpoints require an authenticated session. Sessions are established
+    via `POST /api/v1/auth/login` (or OIDC), which sets an `HttpOnly` session
+    cookie (`componode_session`). Mutating requests must also send the CSRF
+    token returned at login via the `X-CSRF-Token` header (double-submit
+    pattern, cookie `componode_csrf`).
+
+    Public endpoints: `POST /auth/login`, `POST /auth/register`,
+    `POST /auth/password/reset/confirm`, the OIDC endpoints, and `GET /metrics`
+    (no `/api/v1` prefix; network-restricted in production).
+
+    ## Errors
+    Error responses use a consistent envelope:
+    `{ "code": "<ERROR_CODE>", "message": "...", "details": <optional> }`.
+    Error codes are a controlled enum defined in `packages/core`
+    (`ERROR_CODES`).
+
+    ## Conventions
+    - All routes are prefixed with `/api/v1` except `GET /metrics`.
+    - `GET`/`HEAD` routes are side-effect-free on domain state.
+    - List queries exclude `RETIRED` records and `GONE` instances unless
+      explicitly requested.
+    - Entity IDs are UUID v7; human-readable references use `slug`.
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+servers:
+  - url: /api/v1
+tags:
+  - name: Auth
+  - name: Users
+  - name: Sessions
+  - name: Settings
+  - name: Health
+  - name: Products
+  - name: Components
+  - name: ComponentGroups
+  - name: Importers
+  - name: Organization
+  - name: Dashboard
+  - name: Search
+paths:
+  # ------------------------------------------------------------------ Auth
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Local username/password login
+      description: Public. Rate-limited to 5 requests/minute. Sets session and CSRF cookies.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username:
+                  type: string
+                  minLength: 3
+                  maxLength: 50
+                  pattern: '^[a-z0-9_-]+$'
+                password:
+                  type: string
+                  minLength: 8
+                  maxLength: 128
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user: { $ref: '#/components/schemas/Person' }
+                  csrfToken: { type: string }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Revoke the current session
+      security: []
+      description: Clears the session and CSRF cookies.
+      responses:
+        '204': { description: Logged out }
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Self-registration
+      description: |
+        Public. Only available when `allow_self_registration` is enabled in app
+        settings (returns 404 otherwise). Rate-limited to 3 requests/minute.
+        Creates a `VIEWER` user and auto-logs in (sets session + CSRF cookies).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username:
+                  type: string
+                  minLength: 3
+                  maxLength: 50
+                  pattern: '^[a-z0-9_-]+$'
+                password:
+                  type: string
+                  minLength: 8
+                  maxLength: 128
+                displayName: { type: string, maxLength: 100 }
+      responses:
+        '201':
+          description: User created and logged in
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user: { $ref: '#/components/schemas/Person' }
+                  csrfToken: { type: string }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Username already taken (`AUTH_USERNAME_TAKEN`)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /auth/session:
+    get:
+      tags: [Auth]
+      summary: Get the current authenticated user
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user: { $ref: '#/components/schemas/Person' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /auth/password/change:
+    post:
+      tags: [Auth]
+      summary: Change own password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword]
+              properties:
+                currentPassword: { type: string, minLength: 8, maxLength: 128 }
+                newPassword: { type: string, minLength: 8, maxLength: 128 }
+      responses:
+        '204': { description: Password changed }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /auth/password/reset:
+    post:
+      tags: [Auth]
+      summary: Generate a password reset token for a user
+      x-permission: "password:reset:generate"
+      description: Requires the `password:reset:generate` role (Admin).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId]
+              properties:
+                userId: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Reset token generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /auth/password/reset/confirm:
+    post:
+      tags: [Auth]
+      summary: Confirm a password reset with a token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, newPassword]
+              properties:
+                token: { type: string, minLength: 1 }
+                newPassword: { type: string, minLength: 8, maxLength: 128 }
+      responses:
+        '204': { description: Password reset }
+        '400':
+          description: Validation failed or invalid/expired/used token
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /auth/oidc/status:
+    get:
+      tags: [Auth]
+      summary: Check whether OIDC login is enabled
+      security: []
+      responses:
+        '200':
+          description: OIDC status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  enabled: { type: boolean }
+  /auth/oidc/login:
+    post:
+      tags: [Auth]
+      summary: Initiate OIDC login (redirects to the IdP, PKCE)
+      security: []
+      parameters:
+        - in: query
+          name: redirect_uri
+          schema: { type: string, default: '/' }
+          description: Post-login redirect target
+      responses:
+        '302': { description: Redirect to the identity provider }
+        '503':
+          description: OIDC not configured (`OIDC_NOT_CONFIGURED`)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /auth/oidc/callback:
+    get:
+      tags: [Auth]
+      summary: OIDC callback — exchanges code, creates session (JIT provisioning), redirects
+      security: []
+      parameters:
+        - in: query
+          name: code
+          schema: { type: string }
+        - in: query
+          name: state
+          schema: { type: string }
+        - in: query
+          name: error
+          schema: { type: string }
+      responses:
+        '302':
+          description: Redirect to the app (session cookie set; `csrf` query param carries the CSRF token)
+        '400':
+          description: Missing code/state or OIDC failure
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  # ----------------------------------------------------------------- Users
+  /users:
+    get:
+      tags: [Users]
+      summary: List users
+      x-permission: "user:list"
+      description: Requires the `user:list` role (Admin).
+      parameters:
+        - in: query
+          name: role
+          schema: { $ref: '#/components/schemas/Role' }
+        - in: query
+          name: isActive
+          schema: { type: string, enum: ['true', 'false'] }
+        - in: query
+          name: search
+          schema: { type: string }
+      responses:
+        '200':
+          description: User list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users:
+                    type: array
+                    items: { $ref: '#/components/schemas/Person' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Users]
+      summary: Create a user
+      x-permission: "user:create"
+      description: Requires the `user:create` role (Admin).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password, role]
+              properties:
+                username:
+                  type: string
+                  minLength: 3
+                  maxLength: 50
+                  pattern: '^[a-z0-9_-]+$'
+                password: { type: string, minLength: 8, maxLength: 128 }
+                role: { $ref: '#/components/schemas/Role' }
+                displayName: { type: string, maxLength: 100 }
+                email: { type: string, format: email }
+                teamId: { type: string, format: uuid }
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user: { $ref: '#/components/schemas/Person' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409':
+          description: Username already taken (`AUTH_USERNAME_TAKEN`)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /users/me:
+    get:
+      tags: [Users]
+      summary: Get the current user's profile
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user: { $ref: '#/components/schemas/Person' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /users/{id}:
+    get:
+      tags: [Users]
+      summary: Get a user by ID
+      x-permission: "user:list"
+      description: Requires the `user:list` role (Admin).
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+      responses:
+        '200':
+          description: User
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user: { $ref: '#/components/schemas/Person' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Users]
+      summary: Update a user (role, display name, email, team, active flag)
+      x-permission: "user:update"
+      description: Requires the `user:update` role (Admin).
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                role: { $ref: '#/components/schemas/Role' }
+                displayName: { type: string, maxLength: 100 }
+                email: { type: string, format: email }
+                teamId: { type: string, format: uuid, nullable: true }
+                isActive: { type: boolean }
+      responses:
+        '200':
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user: { $ref: '#/components/schemas/Person' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /users/{id}/sessions:
+    get:
+      tags: [Sessions]
+      summary: List sessions for a user
+      x-permission: "user:listSessions"
+      description: Requires the `user:listSessions` role (Admin).
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+      responses:
+        '200':
+          description: User sessions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessions:
+                    type: array
+                    items: { $ref: '#/components/schemas/Session' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  # -------------------------------------------------------------- Sessions
+  /sessions:
+    get:
+      tags: [Sessions]
+      summary: List the current user's sessions
+      responses:
+        '200':
+          description: Sessions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessions:
+                    type: array
+                    items: { $ref: '#/components/schemas/Session' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /sessions/{id}/revoke:
+    post:
+      tags: [Sessions]
+      summary: Revoke a session by ID
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+      responses:
+        '204': { description: Session revoked }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  # -------------------------------------------------------------- Settings
+  /settings:
+    get:
+      tags: [Settings]
+      summary: Read application settings
+      x-permission: "settings:update"
+      description: Requires the `settings:update` role (Admin).
+      responses:
+        '200':
+          description: Settings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  settings: { $ref: '#/components/schemas/AppSettings' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    patch:
+      tags: [Settings]
+      summary: Update application settings
+      x-permission: "settings:update"
+      description: Requires the `settings:update` role (Admin).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                allowSelfRegistration: { type: boolean }
+                sessionIdleTimeoutMs: { type: integer, minimum: 60000 }
+                sessionAbsoluteTimeoutMs: { type: integer, minimum: 60000 }
+                defaultUserRole: { $ref: '#/components/schemas/Role' }
+      responses:
+        '200':
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  settings: { $ref: '#/components/schemas/AppSettings' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /settings/oidc:
+    get:
+      tags: [Settings]
+      summary: Read OIDC configuration
+      x-permission: "oidc:configure"
+      description: Requires the `oidc:configure` role (Admin).
+      responses:
+        '200':
+          description: OIDC config
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  oidcConfig: { $ref: '#/components/schemas/OidcConfig' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    put:
+      tags: [Settings]
+      summary: Update OIDC configuration (tests issuer discovery)
+      x-permission: "oidc:configure"
+      description: Requires the `oidc:configure` role (Admin).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enabled]
+              properties:
+                enabled: { type: boolean }
+                issuer: { type: string, format: uri, nullable: true }
+                clientId: { type: string, nullable: true }
+                clientSecretRef: { type: string, nullable: true }
+                roleClaimPath: { type: string, nullable: true }
+                claimValueField: { type: string, nullable: true }
+                roleMapping:
+                  type: object
+                  nullable: true
+                  additionalProperties: { $ref: '#/components/schemas/Role' }
+      responses:
+        '200':
+          description: Updated OIDC config
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  oidcConfig: { $ref: '#/components/schemas/OidcConfig' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  # ---------------------------------------------------------------- Health
+  /health:
+    get:
+      tags: [Health]
+      summary: Health + database connectivity check
+      responses:
+        '200':
+          description: Healthy
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HealthStatus' }
+        '503':
+          description: Unhealthy (database unreachable)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HealthStatus' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  # --------------------------------------------------------------- Products
+  /products:
+    get:
+      tags: [Products]
+      summary: List products
+      parameters:
+        - in: query
+          name: q
+          schema: { type: string, minLength: 1, maxLength: 200 }
+          description: Free-text search
+        - in: query
+          name: type
+          schema: { $ref: '#/components/schemas/ProductType' }
+        - in: query
+          name: lifecycle
+          schema: { $ref: '#/components/schemas/Lifecycle' }
+        - in: query
+          name: includeRetired
+          schema: { type: string, enum: ['true', 'false'] }
+      responses:
+        '200':
+          description: Product list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  products:
+                    type: array
+                    items: { $ref: '#/components/schemas/DigitalProduct' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Products]
+      summary: Create a product
+      x-permission: "product:create"
+      description: Requires the `product:create` role (Editor+).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateProduct' }
+      responses:
+        '201':
+          description: Product created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  product: { $ref: '#/components/schemas/DigitalProduct' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /products/{slug}:
+    get:
+      tags: [Products]
+      summary: Get product detail by slug
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Product detail (includes composition edges and dependencies)
+          content:
+            application/json:
+              schema: { type: object }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /products/{id}:
+    patch:
+      tags: [Products]
+      summary: Update a product
+      x-permission: "product:update"
+      description: Requires the `product:update` role (Editor+).
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateProduct' }
+      responses:
+        '200':
+          description: Updated product
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  product: { $ref: '#/components/schemas/DigitalProduct' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [Products]
+      summary: Delete a product
+      x-permission: "product:delete"
+      description: Requires the `product:delete` role (Editor+).
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+      responses:
+        '204': { description: Product deleted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /products/{id}/composes:
+    post:
+      tags: [Products]
+      summary: Add a COMPOSES edge (this product composes a child product)
+      x-permission: "product:edge:add"
+      description: |
+        Requires the `product:edge:add` role. `COMPOSES` forms a DAG — adding an
+        edge that creates a cycle returns `409` (`CYCLE_DETECTED`). The parent
+        must be `BUSINESS_CAPABILITY` or `CUSTOMER_FACING`.
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [childId]
+              additionalProperties: false
+              properties:
+                childId: { type: string, format: uuid }
+      responses:
+        '204': { description: Edge added }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409':
+          description: Edge would create a cycle (`CYCLE_DETECTED`)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: Parent type not allowed (`INVALID_EDGE_TYPE`)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /products/{id}/composes/{childId}:
+    delete:
+      tags: [Products]
+      summary: Remove a COMPOSES edge
+      x-permission: "product:edge:remove"
+      description: Requires the `product:edge:remove` role.
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+        - in: path
+          name: childId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '204': { description: Edge removed }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /products/{id}/consumes-from:
+    post:
+      tags: [Products]
+      summary: Add a CONSUMES_FROM edge (this product consumes a platform product)
+      x-permission: "product:edge:add"
+      description: |
+        Requires the `product:edge:add` role. The target must be a product of
+        type `PLATFORM` (`INVALID_EDGE_TYPE` on violation).
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [platformId]
+              additionalProperties: false
+              properties:
+                platformId: { type: string, format: uuid }
+      responses:
+        '204': { description: Edge added }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422':
+          description: Target is not a PLATFORM product (`INVALID_EDGE_TYPE`)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /products/{id}/consumes-from/{platformId}:
+    delete:
+      tags: [Products]
+      summary: Remove a CONSUMES_FROM edge
+      x-permission: "product:edge:remove"
+      description: Requires the `product:edge:remove` role.
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+        - in: path
+          name: platformId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '204': { description: Edge removed }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /products/{id}/depends-on:
+    post:
+      tags: [Products]
+      summary: Add a DEPENDS_ON edge (product depends on a component)
+      x-permission: "product:edge:add"
+      description: Requires the `product:edge:add` role.
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [componentId]
+              additionalProperties: false
+              properties:
+                componentId: { type: string, format: uuid }
+      responses:
+        '204': { description: Edge added }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422':
+          description: Edge type rule violated (`INVALID_EDGE_TYPE`)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /products/{id}/depends-on/{componentId}:
+    delete:
+      tags: [Products]
+      summary: Remove a DEPENDS_ON edge
+      x-permission: "product:edge:remove"
+      description: Requires the `product:edge:remove` role.
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+        - in: path
+          name: componentId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '204': { description: Edge removed }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # -------------------------------------------------------------- Components
+  /components:
+    get:
+      tags: [Components]
+      summary: List components (paginated, filterable)
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1, default: 1 }
+        - in: query
+          name: pageSize
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+        - in: query
+          name: category
+          schema:
+            oneOf:
+              - { type: string }
+              - { type: array, items: { type: string } }
+        - in: query
+          name: provider
+          schema:
+            oneOf:
+              - { type: string }
+              - { type: array, items: { type: string } }
+        - in: query
+          name: lifecycle
+          schema:
+            oneOf:
+              - { $ref: '#/components/schemas/Lifecycle' }
+              - { type: array, items: { $ref: '#/components/schemas/Lifecycle' } }
+        - in: query
+          name: status
+          schema:
+            oneOf:
+              - { type: string }
+              - { type: array, items: { type: string } }
+        - in: query
+          name: componentGroup
+          schema:
+            oneOf:
+              - { type: string }
+              - { type: array, items: { type: string } }
+        - in: query
+          name: group
+          schema:
+            oneOf:
+              - { type: string }
+              - { type: array, items: { type: string } }
+        - in: query
+          name: search
+          schema: { type: string, maxLength: 100 }
+        - in: query
+          name: sort
+          schema: { type: string, enum: [name, lastSeenAt, createdAt], default: name }
+        - in: query
+          name: order
+          schema: { type: string, enum: [asc, desc], default: asc }
+        - in: query
+          name: includeRetired
+          schema: { type: boolean, default: false }
+        - in: query
+          name: includeGone
+          schema: { type: boolean, default: false }
+      responses:
+        '200':
+          description: Paginated component list
+          content:
+            application/json:
+              schema: { type: object }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /components/{id}:
+    get:
+      tags: [Components]
+      summary: Get a component by ID
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+      responses:
+        '200':
+          description: Component
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  component: { $ref: '#/components/schemas/Component' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Components]
+      summary: Update component group/team assignment
+      x-permission: "component:update"
+      description: Requires the `component:update` role (Editor+).
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                componentGroupId: { type: string, format: uuid, nullable: true }
+                teamOwnerId: { type: string, format: uuid, nullable: true }
+      responses:
+        '200':
+          description: Updated component
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  component: { $ref: '#/components/schemas/Component' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # -------------------------------------------------------- Component groups
+  /component-groups:
+    get:
+      tags: [ComponentGroups]
+      summary: List component groups
+      parameters:
+        - in: query
+          name: lifecycle
+          schema: { $ref: '#/components/schemas/Lifecycle' }
+      responses:
+        '200':
+          description: Component groups
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  groups:
+                    type: array
+                    items: { $ref: '#/components/schemas/ComponentGroup' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [ComponentGroups]
+      summary: Create a component group
+      x-permission: "componentGroup:create"
+      description: Requires the `componentGroup:create` role (Editor+).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, slug]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 100 }
+                slug: { type: string, minLength: 1, maxLength: 100 }
+                description: { type: string, maxLength: 500 }
+                teamOwnerId: { type: string, format: uuid }
+      responses:
+        '201':
+          description: Group created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  group: { $ref: '#/components/schemas/ComponentGroup' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409':
+          description: Slug already in use (`SLUG_CONFLICT`)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /component-groups/{id}:
+    get:
+      tags: [ComponentGroups]
+      summary: Get a component group by ID
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+      responses:
+        '200':
+          description: Component group
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  group: { $ref: '#/components/schemas/ComponentGroup' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [ComponentGroups]
+      summary: Update a component group
+      x-permission: "componentGroup:update"
+      description: Requires the `componentGroup:update` role (Editor+).
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, minLength: 1, maxLength: 100 }
+                slug: { type: string, minLength: 1, maxLength: 100 }
+                description: { type: string, maxLength: 500 }
+                teamOwnerId: { type: string, format: uuid }
+                lifecycle: { $ref: '#/components/schemas/Lifecycle' }
+      responses:
+        '200':
+          description: Updated group
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  group: { $ref: '#/components/schemas/ComponentGroup' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Slug already in use (`SLUG_CONFLICT`)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+    delete:
+      tags: [ComponentGroups]
+      summary: Delete a component group
+      x-permission: "componentGroup:delete"
+      description: Requires the `componentGroup:delete` role (Editor+).
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+      responses:
+        '204': { description: Group deleted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # -------------------------------------------------------------- Importers
+  /importers:
+    get:
+      tags: [Importers]
+      summary: List available importer manifests
+      responses:
+        '200':
+          description: Importer manifests
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  importers:
+                    type: array
+                    items: { type: object }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /importers/{name}/schema:
+    get:
+      tags: [Importers]
+      summary: Get an importer's config schema
+      parameters:
+        - in: path
+          name: name
+          required: true
+          schema: { type: string }
+          description: Importer name (e.g. `github`, `aws`, `kubernetes`)
+      responses:
+        '200':
+          description: Importer config schema
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name: { type: string }
+                  configSchema: { type: object }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /importer-configs:
+    get:
+      tags: [Importers]
+      summary: List importer configurations
+      responses:
+        '200':
+          description: Importer configs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  configs:
+                    type: array
+                    items: { $ref: '#/components/schemas/ImporterConfig' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Importers]
+      summary: Create an importer configuration
+      x-permission: "importer:config:create"
+      description: Requires the `importer:config:create` role (Admin).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [importerName, label]
+              properties:
+                importerName: { type: string, minLength: 1 }
+                label: { type: string, minLength: 1, maxLength: 100 }
+                scope:
+                  type: object
+                  default: {}
+                  description: Importer-specific scope/config
+                secretRefs:
+                  type: array
+                  default: []
+                  items:
+                    type: object
+                    required: [key]
+                    properties:
+                      key: { type: string, minLength: 1 }
+                      env: { type: string }
+                      file: { type: string }
+                    description: Either `env` or `file` must be provided.
+                schedule: { type: string, description: Cron schedule }
+                enabled: { type: boolean, default: true }
+      responses:
+        '201':
+          description: Config created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  config: { $ref: '#/components/schemas/ImporterConfig' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /importer-configs/{id}:
+    get:
+      tags: [Importers]
+      summary: Get an importer configuration
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+      responses:
+        '200':
+          description: Importer config
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  config: { $ref: '#/components/schemas/ImporterConfig' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Importers]
+      summary: Update an importer configuration
+      x-permission: "importer:config:update"
+      description: Requires the `importer:config:update` role (Admin).
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                importerName: { type: string, minLength: 1 }
+                label: { type: string, minLength: 1, maxLength: 100 }
+                scope: { type: object }
+                secretRefs:
+                  type: array
+                  items:
+                    type: object
+                    required: [key]
+                    properties:
+                      key: { type: string, minLength: 1 }
+                      env: { type: string }
+                      file: { type: string }
+                schedule: { type: string }
+                enabled: { type: boolean }
+      responses:
+        '200':
+          description: Updated config
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  config: { $ref: '#/components/schemas/ImporterConfig' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Importers]
+      summary: Delete an importer configuration
+      x-permission: "importer:config:delete"
+      description: Requires the `importer:config:delete` role (Admin).
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+      responses:
+        '204': { description: Config deleted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /importer-configs/{id}/trigger:
+    post:
+      tags: [Importers]
+      summary: Trigger an import run
+      x-permission: "importer:run:trigger"
+      description: Requires the `importer:run:trigger` role.
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+      responses:
+        '202':
+          description: Run started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  runId: { type: string, format: uuid }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409':
+          description: A run is already in progress for this config (`RUN_IN_PROGRESS`)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /importer-configs/{id}/runs:
+    get:
+      tags: [Importers]
+      summary: List runs for an importer configuration
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+      responses:
+        '200':
+          description: Runs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  runs:
+                    type: array
+                    items: { $ref: '#/components/schemas/ImportRun' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /importer-configs/{configId}/runs/{runId}:
+    get:
+      tags: [Importers]
+      summary: Get an import run
+      parameters:
+        - in: path
+          name: configId
+          required: true
+          schema: { type: string, format: uuid }
+        - in: path
+          name: runId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Run detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  run: { $ref: '#/components/schemas/ImportRun' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /importer-configs/{configId}/runs/{runId}/errors:
+    get:
+      tags: [Importers]
+      summary: List errors for an import run
+      parameters:
+        - in: path
+          name: configId
+          required: true
+          schema: { type: string, format: uuid }
+        - in: path
+          name: runId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Run errors
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items: { $ref: '#/components/schemas/ImportRunError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /importer-configs/{configId}/runs/{runId}/cancel:
+    post:
+      tags: [Importers]
+      summary: Cancel a running or pending import run
+      x-permission: "importer:run:cancel"
+      description: Requires the `importer:run:cancel` role.
+      parameters:
+        - in: path
+          name: configId
+          required: true
+          schema: { type: string, format: uuid }
+        - in: path
+          name: runId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '204': { description: Run cancelled }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Run is not active (`RUN_NOT_ACTIVE`)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  # ----------------------------------------------------------- Organization
+  /lobs:
+    get:
+      tags: [Organization]
+      summary: List lines of business
+      responses:
+        '200':
+          description: LoBs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  lobs:
+                    type: array
+                    items: { $ref: '#/components/schemas/LineOfBusiness' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Organization]
+      summary: Create a line of business
+      x-permission: "lob:create"
+      description: Requires the `lob:create` role (Editor+).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateOrgEntity' }
+      responses:
+        '201':
+          description: LoB created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  lob: { $ref: '#/components/schemas/LineOfBusiness' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /lobs/{id}:
+    patch:
+      tags: [Organization]
+      summary: Update a line of business
+      x-permission: "lob:update"
+      description: Requires the `lob:update` role (Editor+).
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateOrgEntity' }
+      responses:
+        '200':
+          description: Updated LoB
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  lob: { $ref: '#/components/schemas/LineOfBusiness' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [Organization]
+      summary: Delete a line of business
+      x-permission: "lob:delete"
+      description: Requires the `lob:delete` role (Editor+).
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+      responses:
+        '204': { description: LoB deleted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /teams:
+    get:
+      tags: [Organization]
+      summary: List teams
+      responses:
+        '200':
+          description: Teams
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  teams:
+                    type: array
+                    items: { $ref: '#/components/schemas/Team' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Organization]
+      summary: Create a team
+      x-permission: "team:create"
+      description: Requires the `team:create` role (Editor+).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateOrgEntity' }
+      responses:
+        '201':
+          description: Team created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  team: { $ref: '#/components/schemas/Team' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /teams/{id}:
+    patch:
+      tags: [Organization]
+      summary: Update a team
+      x-permission: "team:update"
+      description: Requires the `team:update` role (Editor+).
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateOrgEntity' }
+      responses:
+        '200':
+          description: Updated team
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  team: { $ref: '#/components/schemas/Team' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [Organization]
+      summary: Delete a team
+      x-permission: "team:delete"
+      description: Requires the `team:delete` role (Editor+).
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+      responses:
+        '204': { description: Team deleted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /teams/{id}/members:
+    get:
+      tags: [Organization]
+      summary: List members of a team
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+      responses:
+        '200':
+          description: Team members
+          content:
+            application/json:
+              schema: { type: object }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # -------------------------------------------------------------- Dashboard
+  /dashboard/summary:
+    get:
+      tags: [Dashboard]
+      summary: Dashboard summary aggregates (health & attention view)
+      responses:
+        '200':
+          description: Dashboard summary
+          content:
+            application/json:
+              schema: { type: object }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  # ----------------------------------------------------------------- Search
+  /search:
+    get:
+      tags: [Search]
+      summary: Global search (Ctrl+K palette)
+      parameters:
+        - in: query
+          name: q
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 100 }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 20, default: 8 }
+      responses:
+        '200':
+          description: Search results grouped by entity type
+          content:
+            application/json:
+              schema: { type: object }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  # ------------------------------------------------- Metrics (outside v1)
+  /metrics:
+    get:
+      tags: [Health]
+      summary: Prometheus metrics
+      description: |
+        Unauthenticated endpoint served **without** the `/api/v1` prefix
+        (`GET /metrics`). Network-policy-restricted in production (Docker
+        Compose internal network).
+      servers:
+        - url: /
+      security: []
+      responses:
+        '200':
+          description: Prometheus exposition format
+          content:
+            text/plain:
+              schema: { type: string }
+
+components:
+  parameters:
+    Id:
+      in: path
+      name: id
+      required: true
+      schema: { type: string, format: uuid }
+      description: Entity ID (UUID v7)
+  responses:
+    ValidationFailed:
+      description: Input validation failed (`VALIDATION_FAILED`)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Unauthorized:
+      description: Not authenticated (`AUTH_NO_SESSION`)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Forbidden:
+      description: Insufficient role (`AUTH_FORBIDDEN`)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: Resource not found (`NOT_FOUND`)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Conflict:
+      description: Conflict (e.g. `CONFLICT`, `CYCLE_DETECTED`, `SLUG_TAKEN`, `REFERENCED`)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+  schemas:
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          enum:
+            - AUTH_INVALID_CREDENTIALS
+            - AUTH_RATE_LIMITED
+            - AUTH_NO_SESSION
+            - AUTH_FORBIDDEN
+            - AUTH_USERNAME_TAKEN
+            - AUTH_RESET_TOKEN_INVALID
+            - AUTH_RESET_TOKEN_EXPIRED
+            - AUTH_RESET_TOKEN_USED
+            - OIDC_NOT_CONFIGURED
+            - OIDC_INVALID_STATE
+            - OIDC_INVALID_CODE
+            - OIDC_TOKEN_VERIFICATION_FAILED
+            - OIDC_DISCOVERY_FAILED
+            - CSRF_TOKEN_MISMATCH
+            - VALIDATION_FAILED
+            - NOT_FOUND
+            - CONFLICT
+            - CYCLE_DETECTED
+            - INVALID_EDGE_TYPE
+            - REFERENCED
+            - TYPE_CHANGE_BLOCKED
+            - SLUG_TAKEN
+            - SLUG_CONFLICT
+            - CONFIG_NOT_FOUND
+            - RUN_IN_PROGRESS
+            - RUN_NOT_ACTIVE
+            - INTERNAL_ERROR
+        message: { type: string }
+        details: { description: Optional details (e.g. Zod issues) }
+    Role:
+      type: string
+      enum: [ADMIN, EDITOR, VIEWER]
+    Lifecycle:
+      type: string
+      enum: [ACTIVE, RETIRED]
+    InstanceStatus:
+      type: string
+      enum: [RUNNING, STOPPED, ERROR, GONE]
+    ProductType:
+      type: string
+      enum: [BUSINESS_CAPABILITY, PLATFORM, CUSTOMER_FACING]
+    Person:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        username: { type: string }
+        oidcSubject: { type: string, nullable: true }
+        role: { $ref: '#/components/schemas/Role' }
+        displayName: { type: string, nullable: true }
+        email: { type: string, format: email, nullable: true }
+        teamId: { type: string, format: uuid, nullable: true }
+        slug: { type: string }
+        isActive: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    Session:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Non-secret public identifier. The bearer token is never returned.
+        tokenLast4:
+          type: string
+          description: Last 4 characters of the session token (display only)
+        userId: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+        lastSeenAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+        revokedAt: { type: string, format: date-time, nullable: true }
+    AppSettings:
+      type: object
+      properties:
+        allowSelfRegistration: { type: boolean }
+        sessionIdleTimeoutMs: { type: integer }
+        sessionAbsoluteTimeoutMs: { type: integer }
+        defaultUserRole: { $ref: '#/components/schemas/Role' }
+    OidcConfig:
+      type: object
+      properties:
+        enabled: { type: boolean }
+        issuer: { type: string, nullable: true }
+        clientId: { type: string, nullable: true }
+        clientSecretRef: { type: string, nullable: true }
+        roleClaimPath: { type: string, nullable: true }
+        claimValueField: { type: string, nullable: true }
+        roleMapping:
+          type: object
+          nullable: true
+          additionalProperties: { type: string }
+        updatedAt: { type: string, format: date-time }
+    HealthStatus:
+      type: object
+      properties:
+        status: { type: string, enum: [healthy, unhealthy] }
+        database: { type: string, enum: [connected, disconnected] }
+        uptime: { type: number }
+        version: { type: string }
+    DigitalProduct:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        slug: { type: string }
+        description: { type: string, nullable: true }
+        type: { $ref: '#/components/schemas/ProductType' }
+        lifecycle: { $ref: '#/components/schemas/Lifecycle' }
+        lobOwnerId: { type: string, format: uuid, nullable: true }
+        teamOwnerId: { type: string, format: uuid, nullable: true }
+        createdBy: { type: string, format: uuid, nullable: true }
+        updatedBy: { type: string, format: uuid, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    CreateProduct:
+      type: object
+      required: [name, type]
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        slug:
+          type: string
+          maxLength: 100
+          pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'
+          description: Auto-derived from name when omitted
+        type: { $ref: '#/components/schemas/ProductType' }
+        description: { type: string, maxLength: 2000, nullable: true }
+        lobOwnerId: { type: string, format: uuid, nullable: true }
+        teamOwnerId: { type: string, format: uuid, nullable: true }
+    UpdateProduct:
+      type: object
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        slug:
+          type: string
+          maxLength: 100
+          pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'
+        description: { type: string, maxLength: 2000, nullable: true }
+        type: { $ref: '#/components/schemas/ProductType' }
+        lifecycle: { $ref: '#/components/schemas/Lifecycle' }
+        lobOwnerId: { type: string, format: uuid, nullable: true }
+        teamOwnerId: { type: string, format: uuid, nullable: true }
+    Component:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        slug: { type: string }
+        category: { type: string }
+        provider: { type: string }
+        resourceType: { type: string }
+        lifecycle: { $ref: '#/components/schemas/Lifecycle' }
+        teamOwnerId: { type: string, format: uuid, nullable: true }
+        componentGroupId: { type: string, format: uuid, nullable: true }
+        externalId: { type: string, nullable: true }
+        details: { type: object, nullable: true }
+        lastSeenAt: { type: string, format: date-time, nullable: true }
+        lastSeenInRunId: { type: string, format: uuid, nullable: true }
+        createdBy: { type: string, format: uuid, nullable: true }
+        updatedBy: { type: string, format: uuid, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    ComponentGroup:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        slug: { type: string }
+        description: { type: string, nullable: true }
+        lifecycle: { $ref: '#/components/schemas/Lifecycle' }
+        teamOwnerId: { type: string, format: uuid, nullable: true }
+        createdBy: { type: string, format: uuid, nullable: true }
+        updatedBy: { type: string, format: uuid, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    ImporterConfig:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        importerName: { type: string }
+        label: { type: string }
+        scope: { type: object }
+        secretRefs:
+          type: array
+          nullable: true
+          items:
+            type: object
+            properties:
+              key: { type: string }
+              env: { type: string }
+              file: { type: string }
+        schedule: { type: string, nullable: true }
+        enabled: { type: boolean }
+        createdBy: { type: string, format: uuid, nullable: true }
+        updatedBy: { type: string, format: uuid, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    ImportRun:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        configId: { type: string, format: uuid }
+        status:
+          type: string
+          enum: [PENDING, RUNNING, COMPLETED, FAILED, CANCELLED, INTERRUPTED]
+        triggeredBy: { type: string, format: uuid, nullable: true }
+        startedAt: { type: string, format: date-time, nullable: true }
+        completedAt: { type: string, format: date-time, nullable: true }
+        assetsProcessed: { type: integer }
+        assetsCreated: { type: integer }
+        assetsUpdated: { type: integer }
+        instancesOrphaned: { type: integer }
+        componentsRetired: { type: integer }
+        currentPhase: { type: string, nullable: true }
+        cancelRequestedAt: { type: string, format: date-time, nullable: true }
+        errorMessage: { type: string, nullable: true }
+        errorType: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+    ImportRunError:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        runId: { type: string, format: uuid }
+        assetExternalId: { type: string, nullable: true }
+        errorType: { type: string }
+        errorMessage: { type: string }
+        createdAt: { type: string, format: date-time }
+    Team:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        slug: { type: string }
+        description: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    LineOfBusiness:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        slug: { type: string }
+        description: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    CreateOrgEntity:
+      type: object
+      required: [name]
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        slug:
+          type: string
+          maxLength: 100
+          pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'
+        description: { type: string, maxLength: 2000, nullable: true }
+    UpdateOrgEntity:
+      type: object
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        slug:
+          type: string
+          maxLength: 100
+          pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'
+        description: { type: string, maxLength: 2000, nullable: true }
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: componode_session
+      description: Session cookie set by login/register/OIDC callback
+    csrfToken:
+      type: apiKey
+      in: header
+      name: X-CSRF-Token
+      description: Required on mutating requests (double-submit CSRF)
+security:
+  - sessionCookie: []

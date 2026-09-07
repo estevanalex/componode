@@ -151,6 +151,7 @@
 | [ADR-101](./adrs/ADR-101-database-connection-security.md) | Database connection security |
 | [ADR-102](./adrs/ADR-102-content-injection-in-jsonb-fields.md) | Content injection in JSONB fields |
 | [ADR-103](./adrs/ADR-103-ux-ui-reference-adoption.md) | UX/UI reference adoption (`docs/ux.md` normative) |
+| [ADR-104](./adrs/ADR-104-api-documentation-sync.md) | API documentation sync (`docs/openapi.yaml` + `docs/api.md` normative) |
 
 ---
 

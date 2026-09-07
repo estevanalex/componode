@@ -137,38 +137,18 @@ specs/                              # spec-kit feature specifications
   url/region/status/version), and a details bag. `relationships[]` is **not**
   part of the v1 contract; importer-declared product edges are a v2 feature.
 
-## API Surface (foundation)
+## API Surface
 
-Authenticated routes require a `componode_session` cookie and the appropriate
-role. State-changing routes require a matching `componode_csrf` cookie and
-`x-csrf-token` header.
+All routes live under `/api/v1` (except `GET /metrics`). Authenticated routes
+require a `componode_session` cookie and the appropriate role; state-changing
+routes require a matching `componode_csrf` cookie and `x-csrf-token` header.
 
-| Route | Description | Auth/Role |
-|---|---|---|
-| `POST /api/v1/auth/login` | Local username/password login | Public |
-| `POST /api/v1/auth/register` | Self-registration (if enabled) | Public, rate-limited |
-| `POST /api/v1/auth/logout` | Revoke current session | Any authenticated |
-| `GET /api/v1/auth/session` | Current user info | Any authenticated |
-| `POST /api/v1/auth/password/change` | Change own password | Any authenticated |
-| `POST /api/v1/auth/password/reset` | Admin generates reset token | Admin |
-| `POST /api/v1/auth/password/reset/confirm` | Confirm reset with token | Public |
-| `GET /api/v1/auth/oidc/status` | OIDC enabled status | Public |
-| `POST /api/v1/auth/oidc/login` | Initiate OIDC login (PKCE) | Public |
-| `GET /api/v1/auth/oidc/callback` | OIDC callback (JIT provisioning) | Public |
-| `GET /api/v1/users` | List users | Admin |
-| `GET /api/v1/users/me` | Current user | Any authenticated |
-| `GET /api/v1/users/:id` | Get user by ID | Admin |
-| `POST /api/v1/users` | Create user | Admin |
-| `PATCH /api/v1/users/:id` | Update user role | Admin |
-| `GET /api/v1/sessions` | List all active sessions | Admin |
-| `GET /api/v1/users/:id/sessions` | List sessions for a user | Admin |
-| `POST /api/v1/sessions/:id/revoke` | Revoke a session | Admin |
-| `GET /api/v1/settings` | Read app settings | Admin |
-| `PATCH /api/v1/settings` | Update app settings | Admin |
-| `GET /api/v1/settings/oidc` | Read OIDC config | Admin |
-| `PUT /api/v1/settings/oidc` | Update OIDC config (tests issuer discovery) | Admin |
-| `GET /api/v1/health` | Health + database connectivity | Any authenticated |
-| `GET /api/v1/metrics` | Prometheus metrics | Unauthenticated (network restricted) |
+The full API is documented in:
+
+- **[`docs/api.md`](docs/api.md)** — human-readable reference (every endpoint,
+  request/response shapes, RBAC permissions, error codes).
+- **[`docs/openapi.yaml`](docs/openapi.yaml)** — machine-readable OpenAPI 3.0
+  specification covering the same surface.
 
 ## Architecture Principles
 

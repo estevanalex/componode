@@ -52,7 +52,7 @@ export function hasPermission(userRole: string, action: string): boolean {
 }
 
 export function requireRole(action: string) {
-  return async (req: FastifyRequest, reply: FastifyReply) => {
+  const handler = async (req: FastifyRequest, reply: FastifyReply) => {
     const user = (req as unknown as { user?: { role: string } }).user;
     if (!user) {
       return reply.status(401).send({ code: "AUTH_NO_SESSION", message: "Authentication required" });
@@ -64,4 +64,8 @@ export function requireRole(action: string) {
       });
     }
   };
+  // Tag the handler so the API-docs contract test can introspect the
+  // required permission from route options (ADR-104).
+  (handler as { requiredPermission?: string }).requiredPermission = action;
+  return handler;
 }
