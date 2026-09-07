@@ -101,6 +101,8 @@ Constraints and the relevant ADRs.
 ├── specs/                         # DYNAMIC — created per feature
 │   └── {NNN-feature-name}/        # spec.md, plan.md, tasks.md, ...
 ├── docs/
+│   ├── api.md                     # API reference (human-readable)
+│   ├── openapi.yaml               # API reference (OpenAPI 3.0)
 │   ├── importer-development.md    # Importer contributor contract
 │   ├── ux.md                      # Normative UX/UI reference
 │   ├── data-model.md              # Schema, entities, relationships
@@ -185,6 +187,8 @@ constitution.
 - All routes under `/api/v1/...`. See `ADR-070`.
 - Error responses: `{code, message, details?}`. Codes are controlled enums in
   `packages/core`. See `ADR-071`.
+- Any change that adds, modifies, or removes an API endpoint MUST update
+  `docs/openapi.yaml` and `docs/api.md` in the same change. See `ADR-104`.
 
 ### Testing
 
@@ -250,6 +254,7 @@ artifact, the more specific document wins.
 | `specs/{NNN-feature-name}/plan.md` | Before `speckit-tasks` for that feature |
 | `specs/{NNN-feature-name}/tasks.md` | During `speckit-implement` |
 | `docs/importer-development.md` | When building or editing an importer |
+| `docs/api.md`, `docs/openapi.yaml` | When adding, changing, or removing any API endpoint (ADR-104) |
 | `docs/ux.md` | Before writing or reviewing any frontend spec or UI code |
 | `docs/data-model.md` | When changing schema or entities |
 | `docs/deployment.md` | When changing Docker Compose or deployment |
