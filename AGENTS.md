@@ -215,6 +215,10 @@ Branch naming is determined by `.specify/init-options.json`
 issued, the agent MUST work on the designated feature branch and never on `main`
 or an unrelated branch.
 
+**Roadmap sync**: when a spec completes (implementation + PR), update the
+**Roadmap** section in `README.md` — mark the feature `NNN-name` complete and
+revise the `Next` entry so the roadmap always reflects the current state.
+
 ---
 
 ## What AGENTS.md Is
