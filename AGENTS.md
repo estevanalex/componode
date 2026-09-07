@@ -188,7 +188,10 @@ constitution.
 - Error responses: `{code, message, details?}`. Codes are controlled enums in
   `packages/core`. See `ADR-071`.
 - Any change that adds, modifies, or removes an API endpoint MUST update
-  `docs/openapi.yaml` and `docs/api.md` in the same change. See `ADR-104`.
+  `docs/openapi.yaml` in the same change; `docs/api.md` endpoint tables are
+  generated from it (`docs:api`). Route coverage, `x-permission` vs
+  `requireRole`, and `security: []` vs `verifySession` are enforced by a
+  backend contract test — drift fails CI. See `ADR-104`.
 
 ### Testing
 
