@@ -150,7 +150,9 @@ components, groups, users. Entity-specific tabs differ; the chrome does not.
 ## 5. Products: the hierarchy view
 
 The `/products` primary view is an **expandable indented tree** of the
-COMPOSES DAG: Business Capability / Customer-Facing products as roots,
+COMPOSES DAG: products with no COMPOSES parent render as roots — usually
+Business Capability / Customer-Facing products, but an unparented Platform
+is a root too;
 Platform products nested beneath. Typing in search or applying a filter
 flattens the tree to a normal list.
 
