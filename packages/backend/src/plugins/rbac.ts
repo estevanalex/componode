@@ -23,6 +23,18 @@ const PERMISSIONS: Record<string, Role> = {
   "componentGroup:create": "EDITOR",
   "componentGroup:update": "EDITOR",
   "componentGroup:delete": "EDITOR",
+  // Product hierarchy + org entities (spec 005)
+  "product:create": "EDITOR",
+  "product:update": "EDITOR",
+  "product:delete": "EDITOR",
+  "product:edge:add": "EDITOR",
+  "product:edge:remove": "EDITOR",
+  "lob:create": "EDITOR",
+  "lob:update": "EDITOR",
+  "lob:delete": "EDITOR",
+  "team:create": "EDITOR",
+  "team:update": "EDITOR",
+  "team:delete": "EDITOR",
   // Editor actions (not in foundation, but defined for future)
   // Viewer = read-only (default for all GET routes)
 };

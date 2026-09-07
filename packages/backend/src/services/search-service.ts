@@ -4,7 +4,7 @@ export interface SearchHit {
   id: string;
   name: string;
   slug: string | null;
-  kind: "component" | "product" | "group" | "importer";
+  kind: "component" | "product" | "group" | "importer" | "lob" | "team";
   href: string;
 }
 
@@ -13,6 +13,8 @@ export interface SearchResults {
   products: SearchHit[];
   groups: SearchHit[];
   importers: SearchHit[];
+  lobs: SearchHit[];
+  teams: SearchHit[];
 }
 
 /**
@@ -25,7 +27,7 @@ export async function globalSearch(q: string, limit: number): Promise<SearchResu
   const term = q.trim();
   const like = `${term}%`;
 
-  const [components, products, groups, importers] = await Promise.all([
+  const [components, products, groups, importers, lobs, teams] = await Promise.all([
     db
       .selectFrom("components")
       .select(["id", "name", "slug"])
@@ -59,6 +61,21 @@ export async function globalSearch(q: string, limit: number): Promise<SearchResu
       .orderBy("label")
       .limit(limit)
       .execute(),
+    // Spec 005: org entities are searchable; persons are not (admin-managed).
+    db
+      .selectFrom("line_of_businesses")
+      .select(["id", "name", "slug"])
+      .where((eb) => eb.or([eb("name", "ilike", like), eb("slug", "ilike", like)]))
+      .orderBy("name")
+      .limit(limit)
+      .execute(),
+    db
+      .selectFrom("teams")
+      .select(["id", "name", "slug"])
+      .where((eb) => eb.or([eb("name", "ilike", like), eb("slug", "ilike", like)]))
+      .orderBy("name")
+      .limit(limit)
+      .execute(),
   ]);
 
   return {
@@ -74,7 +91,7 @@ export async function globalSearch(q: string, limit: number): Promise<SearchResu
       name: p.name,
       slug: p.slug,
       kind: "product",
-      href: `/products`,
+      href: `/products/${p.slug}`,
     })),
     groups: groups.map((g) => ({
       id: g.id,
@@ -89,6 +106,20 @@ export async function globalSearch(q: string, limit: number): Promise<SearchResu
       slug: i.importerName,
       kind: "importer",
       href: `/importers`,
+    })),
+    lobs: lobs.map((l) => ({
+      id: l.id,
+      name: l.name,
+      slug: l.slug,
+      kind: "lob",
+      href: `/lobs`,
+    })),
+    teams: teams.map((t) => ({
+      id: t.id,
+      name: t.name,
+      slug: t.slug,
+      kind: "team",
+      href: `/teams`,
     })),
   };
 }

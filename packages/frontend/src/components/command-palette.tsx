@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Boxes, Package, Group, Download, Settings } from "lucide-react";
+import { Boxes, Package, Group, Download, Settings, Landmark, UsersRound } from "lucide-react";
 import { useGlobalSearch } from "@/api/hooks/search";
 import {
   CommandDialog,
@@ -27,6 +27,8 @@ const GROUP_ORDER: Array<{
   { key: "products", heading: "Products", icon: Package },
   { key: "groups", heading: "Component Groups", icon: Group },
   { key: "importers", heading: "Importers", icon: Download },
+  { key: "lobs", heading: "Lines of Business", icon: Landmark },
+  { key: "teams", heading: "Teams", icon: UsersRound },
 ];
 
 const EMPTY = {
@@ -34,6 +36,8 @@ const EMPTY = {
   products: [] as SearchHit[],
   groups: [] as SearchHit[],
   importers: [] as SearchHit[],
+  lobs: [] as SearchHit[],
+  teams: [] as SearchHit[],
 };
 
 const NAV_ACTIONS = [
@@ -70,7 +74,7 @@ export function CommandPalette() {
     };
   }, []);
 
-  const results = data ?? EMPTY;
+  const results = { ...EMPTY, ...data };
   const hasResults = GROUP_ORDER.some((g) => results[g.key].length > 0);
 
   function go(href: string) {
@@ -94,7 +98,7 @@ export function CommandPalette() {
         {GROUP_ORDER.map(({ key, heading, icon: Icon }) =>
           results[key].length === 0 ? null : (
             <CommandGroup key={key} heading={heading}>
-              {results[key].map((hit) => (
+              {results[key].map((hit: SearchHit) => (
                 <CommandItem
                   key={hit.id}
                   value={`${hit.name} ${hit.slug ?? ""}`}

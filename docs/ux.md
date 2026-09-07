@@ -96,7 +96,7 @@ user identity + sign-out (right).
 | `/sessions` | Active sessions | Admin |
 | `/settings` | App settings (OIDC, registration) | Admin |
 | `/login`, `/register`, `/auth/oidc/callback` | Auth (no shell) | — |
-| *(future)* `/lobs`, `/teams`, `/people` | Org entities | Catalog → "Organization" group |
+| `/lobs`, `/teams` (spec 005) · *(future)* `/people` | Org entities | Catalog → "Organization" group |
 
 ### Breadcrumbs
 

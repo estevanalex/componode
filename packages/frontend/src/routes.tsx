@@ -6,6 +6,9 @@ import { RegisterPage } from "@/pages/register";
 import { OidcCallbackPage } from "@/pages/oidc-callback";
 import { DashboardPage } from "@/pages/dashboard";
 import { ProductsPage } from "@/pages/products";
+import { ProductDetailPage } from "@/pages/product-detail";
+import { LobsPage } from "@/pages/lobs";
+import { TeamsPage } from "@/pages/teams";
 import { ComponentsPage } from "@/pages/components";
 import { ComponentDetailPage } from "@/pages/component-detail";
 import { ComponentGroupsPage } from "@/pages/component-groups";
@@ -31,6 +34,9 @@ export const routes: RouteObject[] = [
     children: [
       { index: true, element: authed(<DashboardPage />) },
       { path: "products", element: authed(<ProductsPage />) },
+      { path: "products/:slug", element: authed(<ProductDetailPage />) },
+      { path: "lobs", element: authed(<LobsPage />) },
+      { path: "teams", element: authed(<TeamsPage />) },
       { path: "components", element: authed(<ComponentsPage />) },
       { path: "components/:id", element: authed(<ComponentDetailPage />) },
       { path: "component-groups", element: authed(<ComponentGroupsPage />) },

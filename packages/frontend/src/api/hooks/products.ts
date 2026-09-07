@@ -1,0 +1,108 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "@/api/client";
+import type {
+  ProductListResponse,
+  ProductDetail,
+  DigitalProduct,
+} from "@/api/types";
+
+export interface ProductListParams {
+  q?: string;
+  type?: string;
+  lifecycle?: string;
+  includeRetired?: boolean;
+}
+
+export function useProducts(params: ProductListParams = {}) {
+  const search = new URLSearchParams();
+  if (params.q) search.set("q", params.q);
+  if (params.type) search.set("type", params.type);
+  if (params.lifecycle) search.set("lifecycle", params.lifecycle);
+  if (params.includeRetired) search.set("includeRetired", "true");
+  const qs = search.toString();
+  return useQuery({
+    queryKey: ["products", qs],
+    queryFn: () => api<ProductListResponse>(`/products${qs ? `?${qs}` : ""}`),
+    placeholderData: (prev) => prev, // preserve data during refetch (docs/ux.md §6)
+  });
+}
+
+export function useProduct(slug: string | undefined) {
+  return useQuery({
+    queryKey: ["products", "detail", slug],
+    queryFn: () => api<ProductDetail>(`/products/${slug}`),
+    enabled: !!slug,
+  });
+}
+
+function invalidateProducts(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: ["products"] });
+}
+
+export interface ProductFormInput {
+  name?: string;
+  slug?: string;
+  type?: string;
+  description?: string | null;
+  lifecycle?: string;
+  lobOwnerId?: string | null;
+  teamOwnerId?: string | null;
+}
+
+export function useCreateProduct() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: ProductFormInput) =>
+      api<{ product: DigitalProduct }>("/products", {
+        method: "POST",
+        body: JSON.stringify(vars),
+      }),
+    onSuccess: () => invalidateProducts(qc),
+  });
+}
+
+export function useUpdateProduct() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { id: string } & ProductFormInput) =>
+      api<{ product: DigitalProduct }>(`/products/${vars.id}`, {
+        method: "PATCH",
+        body: JSON.stringify(vars),
+      }),
+    onSuccess: () => invalidateProducts(qc),
+  });
+}
+
+export function useDeleteProduct() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      api<undefined>(`/products/${id}`, { method: "DELETE" }),
+    onSuccess: () => invalidateProducts(qc),
+  });
+}
+
+export type EdgeKind = "composes" | "consumes-from" | "depends-on";
+
+export function useAddEdge() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { id: string; kind: EdgeKind; body: Record<string, string> }) =>
+      api<undefined>(`/products/${vars.id}/${vars.kind}`, {
+        method: "POST",
+        body: JSON.stringify(vars.body),
+      }),
+    onSuccess: () => invalidateProducts(qc),
+  });
+}
+
+export function useRemoveEdge() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { id: string; kind: EdgeKind; otherId: string }) =>
+      api<undefined>(`/products/${vars.id}/${vars.kind}/${vars.otherId}`, {
+        method: "DELETE",
+      }),
+    onSuccess: () => invalidateProducts(qc),
+  });
+}
