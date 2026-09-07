@@ -302,10 +302,14 @@ v1 is split into sequential spec-kit features:
    7 v1 importers. (Complete)
 4. **`004-ux-shell`** ✅ — sidebar shell, state matrix, dark-mode theming,
    health-and-attention dashboard, Ctrl+K global search. (Complete)
-5. **Next** — product hierarchy (products, edges, ownership, tree UI),
-   audit & settings, Docker/CI packaging — numbered when specced.
+5. **`005-product-hierarchy`** ✅ — product tree UI, typed edges
+   (COMPOSES/CONSUMES_FROM/DEPENDS_ON_COMPONENT), LOB/Team ownership, audit
+   records. (PR open)
+6. **Next** — audit & settings polish, Docker/CI packaging — numbered when
+   specced.
 
-Dependencies: 001 → 002 → 003 → 004; product hierarchy builds on the shell.
+Dependencies: 001 → 002 → 003 → 004 → 005; later features build on the
+hierarchy + org entities.
 
 ## License
 
