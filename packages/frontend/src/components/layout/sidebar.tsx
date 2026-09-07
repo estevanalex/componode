@@ -5,6 +5,8 @@ import {
   Package,
   Boxes,
   Group,
+  Landmark,
+  UsersRound,
   Download,
   Users,
   Settings,
@@ -35,6 +37,13 @@ const SECTIONS: NavSection[] = [
       { to: "/products", label: "Products", icon: Package },
       { to: "/components", label: "Components", icon: Boxes },
       { to: "/component-groups", label: "Component Groups", icon: Group },
+    ],
+  },
+  {
+    label: "Organization",
+    items: [
+      { to: "/lobs", label: "Lines of Business", icon: Landmark },
+      { to: "/teams", label: "Teams", icon: UsersRound },
     ],
   },
   {

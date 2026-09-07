@@ -102,6 +102,8 @@ export interface ComponentGroup {
   slug: string;
   description: string | null;
   lifecycle: string;
+  teamOwnerId?: string | null;
+  teamOwnerName?: string | null;
 }
 
 export interface Component {
@@ -114,6 +116,8 @@ export interface Component {
   lifecycle: string;
   componentGroupId: string | null;
   componentGroupName: string | null;
+  teamOwnerId?: string | null;
+  teamOwnerName?: string | null;
   instanceCount: number;
 }
 
@@ -174,7 +178,7 @@ export interface SearchHit {
   id: string;
   name: string;
   slug: string | null;
-  kind: "component" | "product" | "group" | "importer";
+  kind: "component" | "product" | "group" | "importer" | "lob" | "team";
   href: string;
 }
 
@@ -183,6 +187,8 @@ export interface SearchResults {
   products: SearchHit[];
   groups: SearchHit[];
   importers: SearchHit[];
+  lobs: SearchHit[];
+  teams: SearchHit[];
 }
 
 export interface ComponentListResponse {
@@ -194,4 +200,80 @@ export interface ComponentListResponse {
     pageCount: number;
     hasNext: boolean;
   };
+}
+
+// --- Product hierarchy (spec 005) ---------------------------------------
+
+export interface ProductRef {
+  id: string;
+  name: string;
+  slug: string;
+  type: string;
+  lifecycle: string;
+}
+
+export interface DigitalProduct extends ProductRef {
+  description?: string | null;
+  lobOwnerId?: string | null;
+  teamOwnerId?: string | null;
+  lobOwnerName?: string | null;
+  teamOwnerName?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProductListResponse {
+  products: DigitalProduct[];
+  edges: Array<{ parentId: string; childId: string }>;
+}
+
+export interface ComponentDepRef {
+  id: string;
+  name: string;
+  slug: string;
+  category: string;
+  lifecycle: string;
+  via?: { id: string; name: string; slug: string };
+}
+
+export interface InstanceDepRef {
+  id: string;
+  componentId: string;
+  componentName: string;
+  environment: string;
+  status: string;
+  region: string | null;
+  via?: { id: string; name: string; slug: string };
+}
+
+export interface ProductDetail {
+  product: DigitalProduct;
+  composedBy: ProductRef[];
+  composes: ProductRef[];
+  consumesFrom: ProductRef[];
+  consumedBy: ProductRef[];
+  components: { declared: ComponentDepRef[]; inherited: ComponentDepRef[] };
+  instances: { declared: InstanceDepRef[]; inherited: InstanceDepRef[] };
+  counts: {
+    composedBy: number;
+    composes: number;
+    components: number;
+    instances: number;
+  };
+}
+
+export interface OrgEntity {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TeamMember {
+  id: string;
+  displayName: string | null;
+  username: string;
+  slug: string;
 }

@@ -15,7 +15,8 @@ export async function listComponents(rawQuery: ListComponentsQuery) {
 
   let query = db
     .selectFrom("components")
-    .leftJoin("component_groups", "components.componentGroupId", "component_groups.id");
+    .leftJoin("component_groups", "components.componentGroupId", "component_groups.id")
+    .leftJoin("teams", "components.teamOwnerId", "teams.id");
 
   // Default: hide RETIRED components unless explicitly requested
   if (!includeRetired) {
@@ -126,6 +127,8 @@ export async function listComponents(rawQuery: ListComponentsQuery) {
       "components.lifecycle",
       "components.componentGroupId",
       "component_groups.name as componentGroupName",
+      "components.teamOwnerId",
+      "teams.name as teamOwnerName",
       eb
         .selectFrom("component_instances")
         .select((eb2) => eb2.fn.count("component_instances.id").as("count"))
@@ -159,6 +162,7 @@ export async function getComponentById(id: string) {
   const component = await db
     .selectFrom("components")
     .leftJoin("component_groups", "components.componentGroupId", "component_groups.id")
+    .leftJoin("teams", "components.teamOwnerId", "teams.id")
     .select([
       "components.id",
       "components.name",
@@ -169,6 +173,8 @@ export async function getComponentById(id: string) {
       "components.lifecycle",
       "components.componentGroupId",
       "component_groups.name as componentGroupName",
+      "components.teamOwnerId",
+      "teams.name as teamOwnerName",
       "components.externalId",
       "components.details",
       "components.lastSeenAt",

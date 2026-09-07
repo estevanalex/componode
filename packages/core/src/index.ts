@@ -67,6 +67,23 @@ export {
 } from "./schemas/components.js";
 export { searchQuerySchema } from "./schemas/search.js";
 export type { SearchQuery } from "./schemas/search.js";
+export {
+  productTypeSchema,
+  productLifecycleSchema,
+  createProductSchema,
+  updateProductSchema,
+  listProductsQuerySchema,
+  addComposesEdgeSchema,
+  addConsumesFromEdgeSchema,
+  addDependsOnEdgeSchema,
+} from "./schemas/product.js";
+export type {
+  CreateProductInput,
+  UpdateProductInput,
+  ListProductsQuery,
+} from "./schemas/product.js";
+export { createOrgEntitySchema, updateOrgEntitySchema } from "./schemas/org.js";
+export type { CreateOrgEntityInput, UpdateOrgEntityInput } from "./schemas/org.js";
 export type {
   ListComponentsQuery,
   UpdateComponentGroupAssignmentInput,

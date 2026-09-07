@@ -174,6 +174,20 @@ export async function assignComponentGroup(
 ) {
   const parsed = updateComponentGroupAssignmentSchema.parse(input);
 
+  if (parsed.teamOwnerId) {
+    const team = await db
+      .selectFrom("teams")
+      .select("id")
+      .where("id", "=", parsed.teamOwnerId)
+      .executeTakeFirst();
+    if (!team) {
+      throw Object.assign(new Error("Team not found"), {
+        statusCode: 404,
+        code: "NOT_FOUND",
+      });
+    }
+  }
+
   if (parsed.componentGroupId) {
     const group = await getComponentGroup(parsed.componentGroupId);
     if (!group) {
@@ -196,9 +210,17 @@ export async function assignComponentGroup(
     });
   }
 
+  const updates: Record<string, unknown> = {};
+  if (parsed.componentGroupId !== undefined)
+    updates.componentGroupId = parsed.componentGroupId;
+  if (parsed.teamOwnerId !== undefined) updates.teamOwnerId = parsed.teamOwnerId;
+  if (Object.keys(updates).length === 0) {
+    return getComponentGroupByComponentId(componentId);
+  }
+
   await db
     .updateTable("components")
-    .set({ componentGroupId: parsed.componentGroupId })
+    .set(updates)
     .where("id", "=", componentId)
     .execute();
 

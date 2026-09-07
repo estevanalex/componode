@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { OwnerPickers } from "@/components/products/owner-picker";
 import { Pencil, Trash2, Plus, Link2, Group } from "lucide-react";
 import { useSession } from "@/api/hooks/auth";
 import {
@@ -64,6 +65,7 @@ export function ComponentGroupsPage() {
     slug: "",
     description: "",
     lifecycle: "ACTIVE",
+    teamOwnerId: "",
   });
 
   const [assignForm, setAssignForm] = useState({
@@ -72,7 +74,7 @@ export function ComponentGroupsPage() {
   });
 
   function openCreate() {
-    setForm({ name: "", slug: "", description: "", lifecycle: "ACTIVE" });
+    setForm({ name: "", slug: "", description: "", lifecycle: "ACTIVE", teamOwnerId: "" });
     setDialog({ mode: "create" });
   }
 
@@ -82,6 +84,7 @@ export function ComponentGroupsPage() {
       slug: group.slug,
       description: group.description ?? "",
       lifecycle: group.lifecycle,
+      teamOwnerId: group.teamOwnerId ?? "",
     });
     setDialog({ mode: "edit", group });
   }
@@ -92,6 +95,7 @@ export function ComponentGroupsPage() {
         name: form.name,
         slug: form.slug,
         description: form.description || undefined,
+        teamOwnerId: form.teamOwnerId || undefined,
       });
     } else if (dialog?.mode === "edit") {
       await update.mutateAsync({
@@ -100,6 +104,7 @@ export function ComponentGroupsPage() {
         slug: form.slug || undefined,
         description: form.description || undefined,
         lifecycle: form.lifecycle || undefined,
+        teamOwnerId: form.teamOwnerId || undefined,
       });
     }
     setDialog(null);
@@ -273,6 +278,11 @@ export function ComponentGroupsPage() {
                 <option value="ACTIVE">ACTIVE</option>
                 <option value="RETIRED">RETIRED</option>
               </select>
+              <OwnerPickers
+                showLob={false}
+                teamOwnerId={form.teamOwnerId}
+                onTeamChange={(v) => setForm((f) => ({ ...f, teamOwnerId: v }))}
+              />
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setDialog(null)}>

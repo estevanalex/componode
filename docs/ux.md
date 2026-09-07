@@ -96,7 +96,7 @@ user identity + sign-out (right).
 | `/sessions` | Active sessions | Admin |
 | `/settings` | App settings (OIDC, registration) | Admin |
 | `/login`, `/register`, `/auth/oidc/callback` | Auth (no shell) | — |
-| *(future)* `/lobs`, `/teams`, `/people` | Org entities | Catalog → "Organization" group |
+| `/lobs`, `/teams` (spec 005) · *(future)* `/people` | Org entities | Catalog → "Organization" group |
 
 ### Breadcrumbs
 
@@ -150,7 +150,9 @@ components, groups, users. Entity-specific tabs differ; the chrome does not.
 ## 5. Products: the hierarchy view
 
 The `/products` primary view is an **expandable indented tree** of the
-COMPOSES DAG: Business Capability / Customer-Facing products as roots,
+COMPOSES DAG: products with no COMPOSES parent render as roots — usually
+Business Capability / Customer-Facing products, but an unparented Platform
+is a root too;
 Platform products nested beneath. Typing in search or applying a filter
 flattens the tree to a normal list.
 
@@ -163,9 +165,9 @@ flattens the tree to a normal list.
 | Tab | Content |
 |---|---|
 | Overview | Description, owners, LOB, counts (N composed-by, M composes, K components, J instances) |
-| Composition | Three labeled sections: **Composed by** (parents, upward), **Composes** (children, downward), **Consumes from** (CONSUMES_FROM edges — a different relationship type, never mixed into the COMPOSES tree) |
-| Components | The product's component dependencies — reuses the catalog table |
-| Instances | Component instances grouped by environment |
+| Composition | Labeled sections: **Composed by** (parents, upward), **Composes** (children, downward), **Consumes from** (CONSUMES_FROM edges — a different relationship type, never mixed into the COMPOSES tree), and for `PLATFORM` products **Consumed by** (reverse lookups) |
+| Components | The product's component dependencies split into **Declared** (direct `DEPENDS_ON_COMPONENT` edges) and **Inherited** (via composed products, annotated with the `via` product) — reuses the catalog table |
+| Instances | Component instances grouped by environment, with the same Declared/Inherited split |
 
 ### Deferred: graph visualization
 

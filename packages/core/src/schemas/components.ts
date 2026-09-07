@@ -27,7 +27,8 @@ export const listComponentsQuerySchema = z.object({
 });
 
 export const updateComponentGroupAssignmentSchema = z.object({
-  componentGroupId: z.string().uuid().nullable(),
+  componentGroupId: z.string().uuid().nullable().optional(),
+  teamOwnerId: z.string().uuid().nullable().optional(),
 });
 
 export const createComponentGroupSchema = z.object({

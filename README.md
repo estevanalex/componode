@@ -84,14 +84,18 @@ packages/
 │   │                               # 003_terminal_state_triggers
 │   ├── src/plugins/                # helmet, cors, csrf, rate-limit, session,
 │   │                               # rbac, logging, metrics, tracing
-│   ├── src/routes/                 # auth, users, sessions, settings, health, metrics
+│   ├── src/routes/                 # auth, users, sessions, settings, health, metrics,
+│   │                               # products (hierarchy + edges), org (lobs/teams),
+│   │                               # components, groups, importers, dashboard, search
 │   ├── src/services/               # auth, user, session, oidc, password-reset,
-│   │                               # settings, bootstrap
+│   │                               # settings, bootstrap, product, product-edge,
+│   │                               # org, audit, search, dashboard
 │   └── test/                       # unit and integration (testcontainers) tests
 └── frontend/                       # React/Vite dashboard
-    ├── src/pages/                  # login, register, dashboard, products,
-    │                               # components, importers, settings, sessions,
-    │                               # users, oidc-callback, not-found
+    ├── src/pages/                  # login, register, dashboard, products (tree),
+    │                               # product-detail, lobs, teams, components,
+    │                               # component-groups, importers, settings,
+    │                               # sessions, users, oidc-callback, not-found
     ├── src/components/ui/          # shadcn/ui components
     ├── src/components/layout/      # auth-guard, nav
     └── src/api/                    # fetch client + TanStack Query hooks

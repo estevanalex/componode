@@ -1,6 +1,8 @@
 import { useParams, Link } from "react-router-dom";
 import { ArrowLeft, Box } from "lucide-react";
-import { useComponentDetail } from "@/api/hooks/components";
+import { useComponentDetail, useUpdateComponent } from "@/api/hooks/components";
+import { useSession } from "@/api/hooks/auth";
+import { useTeams } from "@/api/hooks/org";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -26,6 +28,10 @@ export function ComponentDetailPage() {
   const { data, isPending, isFetching, error, refetch } = useComponentDetail(id ?? null);
   const component = data?.component;
   useSetCrumbLabel(component?.slug ?? null);
+  const { data: user } = useSession();
+  const { data: teamsData } = useTeams();
+  const updateComponent = useUpdateComponent();
+  const canEdit = ["EDITOR", "ADMIN"].includes(user?.role ?? "VIEWER");
 
   const isForbidden = error ? ((error as unknown) as ApiError).code === "FORBIDDEN" : false;
 
@@ -105,6 +111,32 @@ export function ComponentDetailPage() {
             <div className="flex justify-between">
               <span className="text-muted-foreground">Group</span>
               <span>{component.componentGroupName ?? "—"}</span>
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-muted-foreground">Team owner</span>
+              {canEdit ? (
+                <select
+                  aria-label="Team owner"
+                  value={component.teamOwnerId ?? ""}
+                  onChange={(e) =>
+                    updateComponent.mutate({
+                      id: component.id,
+                      teamOwnerId: e.target.value || null,
+                    })
+                  }
+                  className="h-8 max-w-40 rounded-md border border-input bg-background px-2 text-sm"
+                  disabled={updateComponent.isPending}
+                >
+                  <option value="">Unassigned</option>
+                  {(teamsData?.teams ?? []).map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <span>{component.teamOwnerName ?? "—"}</span>
+              )}
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Last seen</span>

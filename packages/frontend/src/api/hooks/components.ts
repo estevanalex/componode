@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import type { ComponentWithInstances, ComponentGroup, ComponentListResponse } from "@/api/types";
 
@@ -46,5 +46,19 @@ export function useComponentDetail(id: string | null) {
     queryKey: ["components", id],
     queryFn: () => api<{ component: ComponentWithInstances }>(`/components/${id}`),
     enabled: id !== null,
+  });
+}
+
+export function useUpdateComponent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { id: string } & Record<string, unknown>) =>
+      api<{ component: unknown }>(`/components/${vars.id}`, {
+        method: "PATCH",
+        body: JSON.stringify(vars),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["components"] });
+    },
   });
 }
