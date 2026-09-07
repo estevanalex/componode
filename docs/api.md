@@ -125,8 +125,10 @@ returned).
 | POST | `/api/v1/sessions/:id/revoke` | Revoke a session by ID | Authenticated |
 <!-- /GENERATED:table:Sessions -->
 
-`Session` fields: `id` (32-byte random token), `userId, createdAt, lastSeenAt,
-expiresAt, revokedAt?`.
+`Session` fields: `id` (**non-secret public identifier** — the bearer token is
+never returned by the API), `tokenLast4` (last 4 chars of the token, display
+only), `userId, createdAt, lastSeenAt, expiresAt, revokedAt?`.
+`POST /sessions/:id/revoke` takes the public `id`.
 
 ## Settings
 

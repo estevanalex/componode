@@ -1691,7 +1691,13 @@ components:
     Session:
       type: object
       properties:
-        id: { type: string, description: 32-byte base64url crypto-random token }
+        id:
+          type: string
+          format: uuid
+          description: Non-secret public identifier. The bearer token is never returned.
+        tokenLast4:
+          type: string
+          description: Last 4 characters of the session token (display only)
         userId: { type: string, format: uuid }
         createdAt: { type: string, format: date-time }
         lastSeenAt: { type: string, format: date-time }

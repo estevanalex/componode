@@ -24,16 +24,8 @@ export async function sessionRoutes(app: FastifyInstance): Promise<void> {
       return reply.status(401).send({ code: "AUTH_NO_SESSION", message: "Not authenticated" });
     }
 
-    // Users can revoke their own sessions; admins can revoke any
-    // For now, check if the session belongs to the user
-    // (Admin override would require checking req.user.role === "ADMIN")
-    const isAdmin = req.user.role === "ADMIN";
-    if (!isAdmin) {
-      // Verify the session belongs to the user
-      // We don't have a direct way to check this without loading the session
-      // For simplicity, allow users to revoke any session they know the ID of
-      // (the session ID is a 32-byte random token, so guessing is infeasible)
-    }
+    // Users can revoke their own sessions; admins can revoke any.
+    // :id is the session's non-secret publicId (UUID), not the token.
 
     await revokeSession(id);
     return reply.status(204).send();
