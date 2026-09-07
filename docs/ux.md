@@ -165,9 +165,9 @@ flattens the tree to a normal list.
 | Tab | Content |
 |---|---|
 | Overview | Description, owners, LOB, counts (N composed-by, M composes, K components, J instances) |
-| Composition | Three labeled sections: **Composed by** (parents, upward), **Composes** (children, downward), **Consumes from** (CONSUMES_FROM edges — a different relationship type, never mixed into the COMPOSES tree) |
-| Components | The product's component dependencies — reuses the catalog table |
-| Instances | Component instances grouped by environment |
+| Composition | Labeled sections: **Composed by** (parents, upward), **Composes** (children, downward), **Consumes from** (CONSUMES_FROM edges — a different relationship type, never mixed into the COMPOSES tree), and for `PLATFORM` products **Consumed by** (reverse lookups) |
+| Components | The product's component dependencies split into **Declared** (direct `DEPENDS_ON_COMPONENT` edges) and **Inherited** (via composed products, annotated with the `via` product) — reuses the catalog table |
+| Instances | Component instances grouped by environment, with the same Declared/Inherited split |
 
 ### Deferred: graph visualization
 
