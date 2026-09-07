@@ -296,8 +296,8 @@ v1 is split into sequential spec-kit features:
    reconciliation, cancellation, run observability. (Complete)
 3. **`003-component-catalog`** ✅ — component/instance services + UI, the
    7 v1 importers. (Complete)
-4. **`004-ux-shell`** — sidebar shell, state matrix, dark-mode theming,
-   health-and-attention dashboard, Ctrl+K global search.
+4. **`004-ux-shell`** ✅ — sidebar shell, state matrix, dark-mode theming,
+   health-and-attention dashboard, Ctrl+K global search. (Complete)
 5. **Next** — product hierarchy (products, edges, ownership, tree UI),
    audit & settings, Docker/CI packaging — numbered when specced.
 
