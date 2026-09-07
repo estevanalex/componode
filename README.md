@@ -288,21 +288,20 @@ See `.specify/memory/constitution.md` for the full constitution and
 
 ## Roadmap
 
-v1 is split into 6 spec-kit features with an explicit dependency graph:
+v1 is split into sequential spec-kit features:
 
 1. **`001-foundation`** ✅ — core contracts, DB schema, backend skeleton,
    auth, RBAC, observability, empty dashboard. (Complete)
-2. **`002-importer-framework`** — run service, scheduler, registry,
-   reconciliation, cancellation, observability for runs.
-3. **`003-component-catalog`** — component/instance services + UI, the 7 v1
-   importers.
-4. **`004-product-hierarchy`** — products, edges, ownership, Platform Product
-   workflow, hierarchy UI.
-5. **`005-audit-and-settings`** — audit tables, settings, admin UI.
-6. **`006-deployment-and-docs`** — Docker Compose packaging, CI, changesets,
-   docs.
+2. **`002-importer-framework`** ✅ — run service, scheduler, registry,
+   reconciliation, cancellation, run observability. (Complete)
+3. **`003-component-catalog`** ✅ — component/instance services + UI, the
+   7 v1 importers. (Complete)
+4. **`004-ux-shell`** — sidebar shell, state matrix, dark-mode theming,
+   health-and-attention dashboard, Ctrl+K global search.
+5. **Next** — product hierarchy (products, edges, ownership, tree UI),
+   audit & settings, Docker/CI packaging — numbered when specced.
 
-Dependencies: 001 → 002 → 003 + 004 (overlap) → 005 + 006.
+Dependencies: 001 → 002 → 003 → 004; product hierarchy builds on the shell.
 
 ## License
 
