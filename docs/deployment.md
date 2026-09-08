@@ -37,6 +37,24 @@ Componode is self-hosted with Docker Compose. One deployment serves one organiza
 6. Open `http://localhost:3000` and log in with the bootstrap admin credentials
    configured in `.env`.
 
+## Smoke test
+
+A deployment smoke test is available in `scripts/smoke-test.sh`. It copies
+`.env.example` to `.env` (if needed), starts the stack, and verifies:
+
+- `GET /api/v1/health` returns `healthy` and `database: connected`.
+- The built frontend is served at the root `/`.
+- A bootstrap admin can log in and call a protected route.
+
+Run it on macOS/Linux/WSL with:
+
+```bash
+./scripts/smoke-test.sh
+```
+
+On Windows without WSL, run the equivalent steps from the script manually in
+PowerShell, or use Git Bash.
+
 ## Configuration reference
 
 The deployment is controlled by `.env`. The table below maps each variable to

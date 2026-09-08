@@ -6,7 +6,7 @@ export default defineConfig({
   srcDir: "../docs",
   outDir: "./.vitepress/dist",
   cleanUrls: true,
-  base: "/",
+  base: "/componode/",
   themeConfig: {
     nav: [
       { text: "Home", link: "/" },

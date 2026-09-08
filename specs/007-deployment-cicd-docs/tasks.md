@@ -173,3 +173,13 @@
 - User Story tasks are labeled [US1], [US2], [US3].
 - Tests are written or created before their matching implementation to satisfy the test-first cycle.
 - The feature introduces no new runtime product code; all artifacts are packaging, release, and docs infrastructure.
+
+---
+
+## Phase 7: Convergence
+
+- [x] T037 [P] Set VitePress `base` to `/componode/` in `docs-site/.vitepress/config.ts` and verify the built docs site asset paths work on the default GitHub Pages URL per `SC-004` (missing).
+- [x] T038 [P] [US1] Extend `scripts/smoke-test.sh` to log in with `BOOTSTRAP_ADMIN_USERNAME`/`BOOTSTRAP_ADMIN_PASSWORD`, call a protected route, and assert the health response contains `database: connected` per `SC-005` (partial).
+- [x] T039 [P] [US2] Configure `release.yml` and `Dockerfile` to build and publish multi-arch container images for `linux/amd64` and `linux/arm64` per `plan.md` target platform (partial).
+- [x] T040 [P] [US1] Extend `scripts/smoke-test.sh` to fetch the root `/` HTML and verify the Vite-built frontend is served per `US1/AC1` (partial).
+- [x] T041 [P] Mark `scripts/smoke-test.sh`, `scripts/release-dry-run.sh`, and `scripts/test-docs-site.sh` as executable in Git and document cross-platform execution in `docs/deployment.md` per `plan.md` project structure (missing).
