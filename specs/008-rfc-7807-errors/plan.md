@@ -95,12 +95,12 @@ specs/008-rfc-7807-errors/
 │   │   │   │   health.ts              # unchanged (already public)
 │   │   test/
 │   │   │   integration/
-│   │   │   │   problem-errors.test.ts # new: integration tests for problem envelope
-│   │   │   │   auth.test.ts           # update: assertions may need to accept both shapes
+│   │   │   │   problem-errors.test.ts      # new: integration tests for problem envelope
+│   │   │   │   compatibility-errors.test.ts # new: backward compatibility assertions
 │   ├── frontend/
 │   │   src/
-│   │   │   lib/
-│   │   │   │   api.ts                 # may need Accept header update
+│   │   │   api/
+│   │   │   │   client.ts              # updated: already parses JSON; ApiError unchanged
 │   │   test/
 │   │   │   unit/
 │   │   │   │   problem-error.test.tsx # new: frontend problem parsing
