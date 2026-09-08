@@ -34,8 +34,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Enable pnpm
-        run: corepack enable pnpm
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -61,7 +61,7 @@ jobs:
       - name: Verify changesets exist or add release-bump fallback
         run: |
           set -e
-          if ls .changeset/*.md >/dev/null 2>&1; then
+          if find .changeset -maxdepth 1 -type f -name '*.md' ! -name 'README.md' -print -quit | grep -q .; then
             echo "Unreleased changesets found; using their bump levels."
           else
             echo "No unreleased changesets found; creating release-bump changeset with bump '${{ github.event.inputs.bump }}'."
@@ -110,8 +110,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Enable pnpm
-        run: corepack enable pnpm
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
