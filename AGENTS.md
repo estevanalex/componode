@@ -1,6 +1,6 @@
 # AGENTS.md — Project Context for AI Coding Agents
 
-> **Last updated**: 2026-09-04 (AGENTS.md review — trimmed to boundaries and references)
+> **Last updated**: 2026-09-08 (added Windows shell notes for git/gh commands)
 > **Project**: Componode — open-source Digital Product Asset Management
 > **License**: Apache 2.0
 > **Repository**: https://github.com/estevanalex/componode
@@ -199,6 +199,21 @@ constitution.
   `constitution.md` VI.
 - `validateDiscoveredAsset` in `packages/core` is the enforceable importer
   contract. Every importer unit test MUST exercise it.
+
+---
+
+## Shell Environment (Windows)
+
+Commands run in **PowerShell**. For any `git` or `gh` command that needs a
+long message (commit body, PR body), write the text to a temporary file and
+pass it with the file flag:
+
+- `git commit -F <file>`
+- `gh pr create --body-file <file>` / `gh pr edit --body-file <file>`
+
+Bash heredocs (`git commit -m "$(cat <<'EOF' ... EOF)"`) fail with parser
+errors in PowerShell — always use the temp-file flag instead. Delete the
+temporary file after the command succeeds.
 
 ---
 
