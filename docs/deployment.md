@@ -75,6 +75,7 @@ its purpose.
 | `OIDC_CLIENT_SECRET` | no | — | Optional OIDC client secret. |
 | `NODE_ENV` | no | `production` | Node environment; should stay `production` for deployments. |
 | `LOG_LEVEL` | no | `info` | Log level (`debug`, `info`, `warn`, `error`). |
+| `PROBLEM_TYPE_BASE` | no | `https://componode.io` | Canonical base URI for RFC 7807 problem `type` fields. |
 
 ## Upgrading
 
