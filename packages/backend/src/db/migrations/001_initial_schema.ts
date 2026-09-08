@@ -616,25 +616,12 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     )
     .execute();
 
-  // --- 23. kysely_migration (Kysely's own bookkeeping table) ----------------
-  await db.schema
-    .createTable("kysely_migration")
-    .addColumn("name", "varchar(255)", (col) => col.primaryKey())
-    .addColumn("timestamp", "bigint", (col) => col.notNull())
-    .execute();
-
-  // --- 24. kysely_migration_lock (Kysely's migration lock) ------------------
-  await db.schema
-    .createTable("kysely_migration_lock")
-    .addColumn("id", "varchar(255)", (col) => col.primaryKey())
-    .execute();
 }
 
 export async function down(db: Kysely<unknown>): Promise<void> {
   // Drop in reverse dependency order. Junction/audit tables first, then
   // core entities, then the persons/teams/lobs foundation.
-  await db.schema.dropTable("kysely_migration_lock").ifExists().execute();
-  await db.schema.dropTable("kysely_migration").ifExists().execute();
+  // Kysely manages its own kysely_migration and kysely_migration_lock tables.
   await db.schema.dropTable("edge_changes").ifExists().execute();
   await db.schema.dropTable("entity_changes").ifExists().execute();
   await db.schema.dropTable("import_run_errors").ifExists().execute();

@@ -114,3 +114,17 @@
 **Expected outcome**: The site renders all existing `docs/*.md` files and the OpenAPI reference is reachable.
 
 **Validation criterion**: A visitor can find the deployment guide, architecture principles, and contributor guides within three clicks from the landing page.
+
+---
+
+## Validation Results
+
+Run on 2026-09-09:
+
+| Scenario | Status | Notes |
+|---|---|---|
+| 1 — Fresh Docker Compose deployment | PASS | `docker compose up -d` built both services; `app` and `postgres` reached `healthy`; `GET /api/v1/health` returned `200`. |
+| 2 — Upgrade/persist data | PASS | `docker compose down` preserved the `postgres_data` volume; re-up applied migrations and kept data. |
+| 3 — Add a changeset | PASS | `pnpm changeset version` consumed a test changeset and updated `package.json` and `CHANGELOG.md`. |
+| 4 — Cut a release | N/A in local | Workflow `release.yml` is in place; end-to-end GitHub Actions/Release validation requires CI secrets. |
+| 5 — Build docs site | PASS | `pnpm docs:build` completed and produced `index.html`, `deployment.html`, `api.html`, and `importer-development.html`. |

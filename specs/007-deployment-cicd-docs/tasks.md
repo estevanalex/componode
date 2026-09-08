@@ -20,11 +20,11 @@
 
 **Purpose**: Add the tooling needed by all three user stories.
 
-- [ ] T001 Add `@changesets/cli` as a dev dependency in `package.json` and run `pnpm install` to update `pnpm-lock.yaml`.
-- [ ] T002 [P] Add `vitepress` as a dev dependency in `package.json` and run `pnpm install` to update `pnpm-lock.yaml`.
-- [ ] T003 [P] Create `.env.example` at repository root with all required and optional environment variables for `docker-compose.yml`.
-- [ ] T004 [P] Create `.github/workflows/ci.yml` to run `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build` on every pull request.
-- [ ] T005 [P] Add `docs:build`, `docs:preview`, and `version` root package scripts to `package.json`.
+- [x] T001 Add `@changesets/cli` as a dev dependency in `package.json` and run `pnpm install` to update `pnpm-lock.yaml`.
+- [x] T002 [P] Add `vitepress` as a dev dependency in `package.json` and run `pnpm install` to update `pnpm-lock.yaml`.
+- [x] T003 [P] Create `.env.example` at repository root with all required and optional environment variables for `docker-compose.yml`.
+- [x] T004 [P] Create `.github/workflows/ci.yml` to run `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build` on every pull request.
+- [x] T005 [P] Add `docs:build`, `docs:preview`, and `version` root package scripts to `package.json`.
 
 ---
 
@@ -32,11 +32,11 @@
 
 **Purpose**: Refine the existing deployment artifacts so all user stories have a stable base.
 
-- [ ] T006 [P] Update `Dockerfile` to run the application as a non-root user, set least-privilege file permissions, and ensure `dist/server.js` is the entrypoint.
-- [ ] T007 [P] Update `docker-compose.yml` to reference `.env`, remove hardcoded secrets from the committed file, add an `app` service dependency on the `postgres` `healthy` condition, and ensure every required environment variable is listed in `.env.example`.
-- [ ] T008 Verify `init-db.sql` creates the `componode` database role and schema with least privilege and does not conflict with Docker Compose `POSTGRES_*` defaults.
-- [ ] T009 Create `docs/deployment.md` as the canonical human-readable deployment guide, covering `.env` setup, `docker compose up`, first login, and upgrade path.
-- [ ] T010 [P] Create `docs/release.md` documenting the changeset workflow, how to cut a release, and where release artifacts are published.
+- [x] T006 [P] Update `Dockerfile` to run the application as a non-root user, set least-privilege file permissions, and ensure `dist/server.js` is the entrypoint.
+- [x] T007 [P] Update `docker-compose.yml` to reference `.env`, remove hardcoded secrets from the committed file, add an `app` service dependency on the `postgres` `healthy` condition, and ensure every required environment variable is listed in `.env.example`.
+- [x] T008 Verify `init-db.sql` creates the `componode` database role and schema with least privilege and does not conflict with Docker Compose `POSTGRES_*` defaults.
+- [x] T009 Create `docs/deployment.md` as the canonical human-readable deployment guide, covering `.env` setup, `docker compose up`, first login, and upgrade path.
+- [x] T010 [P] Create `docs/release.md` documenting the changeset workflow, how to cut a release, and where release artifacts are published.
 
 **Checkpoint**: Tooling and base deployment files are in place. User stories can now proceed in parallel.
 
@@ -50,15 +50,15 @@
 
 ### Tests for User Story 1
 
-- [ ] T011 [P] [US1] Create `scripts/smoke-test.sh` that copies `.env.example` to `.env`, runs `docker compose up -d`, waits for healthy status, and asserts `GET /api/v1/health` returns `200`.
-- [ ] T012 [P] [US1] Create `packages/backend/test/integration/health.test.ts` (or reuse existing) to verify `/api/v1/health` is reachable inside the container.
+- [x] T011 [P] [US1] Create `scripts/smoke-test.sh` that copies `.env.example` to `.env`, runs `docker compose up -d`, waits for healthy status, and asserts `GET /api/v1/health` returns `200`.
+- [x] T012 [P] [US1] Create `packages/backend/test/integration/health.test.ts` (or reuse existing) to verify `/api/v1/health` is reachable inside the container.
 
 ### Implementation for User Story 1
 
-- [ ] T013 [US1] Ensure `docker-compose.yml` mounts a persistent `postgres_data` volume and does not lose data on `docker compose down`.
-- [ ] T014 [US1] Update `README.md` with a "Quick Start" section that links to `docs/deployment.md` and shows the single-command deployment.
-- [ ] T015 [US1] Add a `app` health check in `docker-compose.yml` using `wget --spider -q http://localhost:3000/api/v1/health` and confirm `depends_on` uses `condition: service_healthy`.
-- [ ] T016 [US1] Validate the smoke test: it should FAIL before the deployment package is fully configured and PASS after.
+- [x] T013 [US1] Ensure `docker-compose.yml` mounts a persistent `postgres_data` volume and does not lose data on `docker compose down`.
+- [x] T014 [US1] Update `README.md` with a "Quick Start" section that links to `docs/deployment.md` and shows the single-command deployment.
+- [x] T015 [US1] Add a `app` health check in `docker-compose.yml` using `wget --spider -q http://localhost:3000/api/v1/health` and confirm `depends_on` uses `condition: service_healthy`.
+- [x] T016 [US1] Validate the smoke test: it should FAIL before the deployment package is fully configured and PASS after.
 
 **Checkpoint**: User Story 1 is independently functional — a new user can deploy Componode and log in.
 
@@ -72,15 +72,15 @@
 
 ### Tests for User Story 2
 
-- [ ] T017 [P] [US2] Create `.changeset/config.json` with `mainBranch: main`, `changelogFilename: CHANGELOG.md`, and `access: public` for the root package.
-- [ ] T018 [P] [US2] Create `scripts/release-dry-run.sh` that runs `pnpm changeset version` in a clean temp clone and verifies `package.json` and `CHANGELOG.md` are updated correctly.
+- [x] T017 [P] [US2] Create `.changeset/config.json` with `mainBranch: main`, `changelogFilename: CHANGELOG.md`, and `access: public` for the root package.
+- [x] T018 [P] [US2] Create `scripts/release-dry-run.sh` that runs `pnpm changeset version` in a clean temp clone and verifies `package.json` and `CHANGELOG.md` are updated correctly.
 
 ### Implementation for User Story 2
 
-- [ ] T019 [US2] Create `.github/workflows/release.yml` with two jobs: `version` (opens a release PR from `workflow_dispatch` with `bump` input) and `publish` (publishes a GitHub Release, builds and tags a container image, and attaches the image to the release when a version tag is pushed).
-- [ ] T020 [US2] Add `.changeset/README.md` explaining how contributors add changesets.
-- [ ] T021 [US2] Update `package.json` version to `1.0.0` (or current baseline) and add a `CHANGELOG.md` with a v1.0.0 entry.
-- [ ] T022 [US2] Validate the release dry-run: it should FAIL before the workflow is configured and PASS after.
+- [x] T019 [US2] Create `.github/workflows/release.yml` with two jobs: `version` (opens a release PR from `workflow_dispatch` with `bump` input) and `publish` (publishes a GitHub Release, builds and tags a container image, and attaches the image to the release when a version tag is pushed).
+- [x] T020 [US2] Add `.changeset/README.md` explaining how contributors add changesets.
+- [x] T021 [US2] Update `package.json` version to `1.0.0` (or current baseline) and add a `CHANGELOG.md` with a v1.0.0 entry.
+- [x] T022 [US2] Validate the release dry-run: it should FAIL before the workflow is configured and PASS after.
 
 **Checkpoint**: User Story 2 is independently functional — a maintainer can trigger a release and get versioned artifacts.
 
@@ -94,16 +94,16 @@
 
 ### Tests for User Story 3
 
-- [ ] T023 [P] [US3] Create `docs-site/test/docs-build.test.ts` (or a shell test in `scripts/test-docs-site.sh`) that runs `pnpm docs:build`, asserts the build succeeds, and checks that `index.html`, `deployment.html`, `api.html`, and `importer-development.html` exist in the output directory.
-- [ ] T024 [P] [US3] Add a CI check in `.github/workflows/ci.yml` that runs `pnpm docs:build` and fails the build if the docs site does not compile.
+- [x] T023 [P] [US3] Create `docs-site/test/docs-build.test.ts` (or a shell test in `scripts/test-docs-site.sh`) that runs `pnpm docs:build`, asserts the build succeeds, and checks that `index.html`, `deployment.html`, `api.html`, and `importer-development.html` exist in the output directory.
+- [x] T024 [P] [US3] Add a CI check in `.github/workflows/ci.yml` that runs `pnpm docs:build` and fails the build if the docs site does not compile.
 
 ### Implementation for User Story 3
 
-- [ ] T025 [US3] Create `docs-site/.vitepress/config.ts` with a sidebar linking `docs/deployment.md`, `docs/api.md`, `docs/importer-development.md`, `docs/ux.md`, and a generated OpenAPI API reference page.
-- [ ] T026 [US3] Create `docs-site/index.md` as the landing page and a `docs-site/public/` directory for static assets.
-- [ ] T027 [US3] Configure VitePress to treat `docs/openapi.yaml` as a source and render it as an interactive API reference page in the docs site.
-- [ ] T028 [US3] Create `.github/workflows/docs.yml` that builds the docs site on every push to `main` and publishes it to GitHub Pages.
-- [ ] T029 [US3] Validate the docs build test: it should FAIL before the docs site is configured and PASS after.
+- [x] T025 [US3] Create `docs-site/.vitepress/config.ts` with a sidebar linking `docs/deployment.md`, `docs/api.md`, `docs/importer-development.md`, `docs/ux.md`, and a generated OpenAPI API reference page.
+- [x] T026 [US3] Create `docs-site/index.md` as the landing page and a `docs-site/public/` directory for static assets.
+- [x] T027 [US3] Configure VitePress to treat `docs/openapi.yaml` as a source and render it as an interactive API reference page in the docs site.
+- [x] T028 [US3] Create `.github/workflows/docs.yml` that builds the docs site on every push to `main` and publishes it to GitHub Pages.
+- [x] T029 [US3] Validate the docs build test: it should FAIL before the docs site is configured and PASS after.
 
 **Checkpoint**: User Story 3 is independently functional — the docs site builds and contains the required pages.
 
@@ -113,11 +113,11 @@
 
 **Purpose**: Ensure the v1 packaging feature is cohesive and the documentation is consistent.
 
-- [ ] T030 [P] Update `README.md` roadmap to mark `007-deployment-cicd-docs` complete and remove or defer the "Next" item.
-- [ ] T031 [P] Update `docs/deployment.md` to match the final `docker-compose.yml` and `.env.example`.
-- [ ] T032 Run all quickstart validation scenarios from `quickstart.md` and document results.
-- [ ] T033 [P] Run `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build` across the monorepo and fix any regressions introduced by the new root scripts or dependencies.
-- [ ] T034 Verify that `AGENTS.md` and `.specify/memory/constitution.md` still accurately describe the v1 feature breakdown and roadmap after this feature is added.
+- [x] T030 [P] Update `README.md` roadmap to mark `007-deployment-cicd-docs` complete and remove or defer the "Next" item.
+- [x] T031 [P] Update `docs/deployment.md` to match the final `docker-compose.yml` and `.env.example`.
+- [x] T032 Run all quickstart validation scenarios from `quickstart.md` and document results.
+- [x] T033 [P] Run `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build` across the monorepo and fix any regressions introduced by the new root scripts or dependencies.
+- [x] T034 Verify that `AGENTS.md` and `.specify/memory/constitution.md` still accurately describe the v1 feature breakdown and roadmap after this feature is added.
 
 ---
 

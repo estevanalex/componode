@@ -2,9 +2,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { db } from "../db/connection.js";
 
 export async function healthRoutes(app: FastifyInstance): Promise<void> {
-  app.get("/health", {
-    preHandler: [app.verifySession],
-  }, async (_req: FastifyRequest, reply: FastifyReply) => {
+  app.get("/health", async (_req: FastifyRequest, reply: FastifyReply) => {
     let databaseStatus = "connected";
     try {
       await db.selectFrom("persons").select("persons.id").limit(1).execute();

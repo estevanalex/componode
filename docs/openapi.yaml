@@ -568,6 +568,7 @@ paths:
     get:
       tags: [Health]
       summary: Health + database connectivity check
+      security: []
       responses:
         '200':
           description: Healthy
@@ -579,7 +580,6 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/HealthStatus' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
 
   # --------------------------------------------------------------- Products
   /products:

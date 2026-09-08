@@ -1,6 +1,5 @@
-import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
+import { describe, it, expect, afterEach, beforeEach } from "vitest";
 import { startTestDb, type TestDb } from "../helpers/testcontainers.js";
-import { loginAs, SESSION_COOKIE_NAME } from "../helpers/api.js";
 
 const ADMIN_USERNAME = "admin";
 const ADMIN_PASSWORD = "AdminPassword123!";
@@ -24,10 +23,6 @@ describe("health", () => {
     process.env.NODE_ENV = "test";
     process.env.BOOTSTRAP_ADMIN_USERNAME = ADMIN_USERNAME;
     process.env.BOOTSTRAP_ADMIN_PASSWORD = ADMIN_PASSWORD;
-    vi.resetModules();
-
-    const { bootstrapAdmin } = await import("../../src/services/bootstrap-service.js");
-    await bootstrapAdmin();
 
     const { buildApp } = await import("../../src/app.js");
     app = await buildApp();
@@ -45,17 +40,12 @@ describe("health", () => {
     else delete process.env.BOOTSTRAP_ADMIN_USERNAME;
     if (originalBootstrapPassword !== undefined) process.env.BOOTSTRAP_ADMIN_PASSWORD = originalBootstrapPassword;
     else delete process.env.BOOTSTRAP_ADMIN_PASSWORD;
-    vi.resetModules();
   });
 
-  it("GET /api/v1/health returns 200 with status healthy and database connected", async () => {
-    const session = await loginAs(app, ADMIN_USERNAME, ADMIN_PASSWORD);
-    expect(session).toBeTruthy();
-
+  it("GET /api/v1/health returns 200 with status healthy and database connected without requiring a session", async () => {
     const res = await app.inject({
       method: "GET",
       url: "/api/v1/health",
-      cookies: { [SESSION_COOKIE_NAME]: session! },
     });
 
     expect(res.statusCode).toBe(200);

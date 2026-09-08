@@ -1,0 +1,13 @@
+{
+  "$schema": "https://raw.githubusercontent.com/changesets/changesets/main/packages/config/schema.json",
+  "changelog": ["@changesets/cli/changelog", { "repo": "estevanalex/componode" }],
+  "commit": false,
+  "fixed": [],
+  "linked": [],
+  "access": "public",
+  "baseBranch": "main",
+  "mainBranch": "main",
+  "changelogFilename": "CHANGELOG.md",
+  "updateInternalDependencies": "patch",
+  "ignore": []
+}

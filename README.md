@@ -32,6 +32,21 @@ meaning layer (what it means).
 - Not a security scanner (risk scoring and ASPM integration are deferred to a
   later phase).
 
+## Quick start
+
+Run Componode on your own server with Docker Compose:
+
+```bash
+git clone https://github.com/estevanalex/componode.git
+cd componode
+cp .env.example .env
+# Edit .env and set COOKIE_SECRET, CSRF_SECRET, and BOOTSTRAP_ADMIN_PASSWORD
+docker compose up -d
+```
+
+Then open `http://localhost:3000` and log in with your bootstrap admin
+credentials. See [docs/deployment.md](docs/deployment.md) for the full guide.
+
 ## Current status
 
 The project is in active v1 development. The following capabilities are
@@ -287,8 +302,8 @@ v1 is split into sequential spec-kit features:
    records.
 6. **`006-audit-settings`** ✅ — audit tables, activity feed, history,
    admin settings.
-7. **`007-deployment-cicd-docs`** — Docker Compose packaging, CI/CD
-   changesets, generated docs. (In progress)
+7. **`007-deployment-cicd-docs`** ✅ — Docker Compose packaging, CI/CD
+   changesets, generated docs. (Complete)
 8. **Next** — v1.1 features (Kubernetes/Helm packaging, E2E tests, additional
    providers, RFC 7807 error wrapping).
 

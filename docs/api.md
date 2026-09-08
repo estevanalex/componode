@@ -149,7 +149,7 @@ Timeout values must be ≥ 60000 ms. `roleMapping` maps IdP claim values to
 <!-- GENERATED:table:Health -->
 | Method | Path | Description | Access |
 |---|---|---|---|
-| GET | `/api/v1/health` | Health + database connectivity check | Authenticated |
+| GET | `/api/v1/health` | Health + database connectivity check | Public |
 | GET | `/metrics` | Prometheus metrics | Public |
 <!-- /GENERATED:table:Health -->
 

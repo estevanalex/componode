@@ -13,7 +13,7 @@ describe("migrations", () => {
     }
   });
 
-  it("creates all 24 tables", async () => {
+  it("creates all 22 domain tables", async () => {
     testDb = await startTestDb();
     const result = await sql`SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name`.execute(
       testDb.db,
@@ -32,8 +32,6 @@ describe("migrations", () => {
       "import_run_errors",
       "import_runs",
       "importer_configs",
-      "kysely_migration",
-      "kysely_migration_lock",
       "line_of_businesses",
       "oidc_config",
       "password_reset_tokens",
@@ -48,7 +46,7 @@ describe("migrations", () => {
     for (const table of expectedTables) {
       expect(tableNames).toContain(table);
     }
-    expect(tableNames.length).toBeGreaterThanOrEqual(24);
+    expect(tableNames.length).toBeGreaterThanOrEqual(22);
   });
 
   it("enforces CHECK constraints on persons.role", async () => {

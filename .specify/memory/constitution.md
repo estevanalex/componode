@@ -227,6 +227,8 @@ development guidance and ADR history.
 - **v1.0.2** (2026-09-08): `007-deployment-cicd-docs` added as the final v1
   feature; "Generated docs site" removed from the v1.1 roadmap because it is
   now part of `007`.
+- **v1.0.3** (2026-09-09): `007-deployment-cicd-docs` marked complete; v1
+  feature set is implemented and validated.
 
 ### v1.1 Roadmap (deferred from v1, queued for the next cycle)
 
@@ -241,4 +243,4 @@ development guidance and ADR history.
   Cloudflare, OpenShift, Docker/Podman) — contributor-welcome issues.
 - Importer-declared candidate product edges (v2: staged, human-confirmed).
 
-**Version**: 1.0.2 | **Ratified**: 2026-08-16 | **Last Amended**: 2026-09-08
+**Version**: 1.0.3 | **Ratified**: 2026-08-16 | **Last Amended**: 2026-09-09
