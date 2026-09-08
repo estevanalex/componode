@@ -144,7 +144,7 @@ export async function errorHandler(app: FastifyInstance): Promise<void> {
   });
 
   // Wrap legacy direct error responses that did not use the central error handler.
-  const wrapLegacyError = async (request: FastifyRequest, reply: FastifyReply, payload: unknown) => {
+  const wrapLegacyError = async (_request: FastifyRequest, reply: FastifyReply, payload: unknown) => {
     if (reply.statusCode < 400) {
       return payload;
     }

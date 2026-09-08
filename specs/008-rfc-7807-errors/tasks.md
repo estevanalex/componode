@@ -20,8 +20,8 @@
 
 **Purpose**: Prepare the project for the RFC 7807 migration.
 
-- [ ] T001 [P] Document `PROBLEM_TYPE_BASE` environment variable in `.env.example` and `docs/deployment.md`.
-- [ ] T002 [P] Create `packages/core/src/errors/` directory for the new Problem builder module.
+- [x] T001 [P] Document `PROBLEM_TYPE_BASE` environment variable in `.env.example` and `docs/deployment.md`.
+- [x] T002 [P] Create `packages/core/src/errors/` directory for the new Problem builder module.
 
 ---
 
@@ -33,15 +33,15 @@
 
 ### Tests for Foundational
 
-- [ ] T003 [P] Create `packages/core/test/errors/problem.test.ts` with failing tests for Problem construction, `type` URI generation, `invalid-params` shape, and that serializing a Problem document takes less than 1 ms.
-- [ ] T004 [P] Create `packages/core/test/errors/error-types.test.ts` with failing tests for the `ERROR_CODES` to `type`/`title`/`status` mapping.
+- [x] T003 [P] Create `packages/core/test/errors/problem.test.ts` with failing tests for Problem construction, `type` URI generation, `invalid-params` shape, and that serializing a Problem document takes less than 1 ms.
+- [x] T004 [P] Create `packages/core/test/errors/error-types.test.ts` with failing tests for the `ERROR_CODES` to `type`/`title`/`status` mapping.
 
 ### Implementation for Foundational
 
-- [ ] T005 [P] Create `packages/core/src/constants/error-types.ts` with the controlled `ErrorType` mapping for all `ERROR_CODES`.
-- [ ] T006 Implement `packages/core/src/errors/problem.ts` Problem builder and type-URI helper that uses `PROBLEM_TYPE_BASE` or defaults to the canonical domain `https://componode.io` (depends on T005).
-- [ ] T007 Export `Problem` builder and `ErrorType` mapping from `packages/core/src/index.ts` (depends on T006).
-- [ ] T008 Run `pnpm --filter @componode/core test` and ensure foundational tests pass (depends on T003, T004, T007).
+- [x] T005 [P] Create `packages/core/src/constants/error-types.ts` with the controlled `ErrorType` mapping for all `ERROR_CODES`.
+- [x] T006 Implement `packages/core/src/errors/problem.ts` Problem builder and type-URI helper that uses `PROBLEM_TYPE_BASE` or defaults to the canonical domain `https://componode.io` (depends on T005).
+- [x] T007 Export `Problem` builder and `ErrorType` mapping from `packages/core/src/index.ts` (depends on T006).
+- [x] T008 Run `pnpm --filter @componode/core test` and ensure foundational tests pass (depends on T003, T004, T007).
 
 **Checkpoint**: The core Problem envelope is ready; backend and docs work can now begin.
 
@@ -55,15 +55,15 @@
 
 ### Tests for User Story 1
 
-- [ ] T009 [US1] Create `packages/backend/test/integration/problem-errors.test.ts` with failing tests for 401, 403, 404, 409, 422, 429, and 500 problem responses.
-- [ ] T010 [US1] Create `packages/backend/test/unit/not-found-handler.test.ts` with failing tests that unknown routes return a 404 problem document.
+- [x] T009 [US1] Create `packages/backend/test/integration/problem-errors.test.ts` with failing tests for 401, 403, 404, 409, 422, 429, and 500 problem responses.
+- [x] T010 [US1] Create `packages/backend/test/unit/not-found-handler.test.ts` with failing tests that unknown routes return a 404 problem document.
 
 ### Implementation for User Story 1
 
-- [ ] T011 [US1] Update `packages/backend/src/plugins/error-handler.ts` to construct and send RFC 7807 Problem documents for all handled error paths (depends on T006, T009).
-- [ ] T012 [US1] Update the `setNotFoundHandler` in `packages/backend/src/plugins/error-handler.ts` to return a 404 Problem document (depends on T006, T010).
-- [ ] T013 [US1] Ensure `packages/backend/test/integration/health.test.ts` and other error-path tests still pass with the new problem envelope (depends on T011).
-- [ ] T014 [US1] Run `pnpm --filter @componode/backend test` and ensure all backend tests pass (depends on T009, T010, T013).
+- [x] T011 [US1] Update `packages/backend/src/plugins/error-handler.ts` to construct and send RFC 7807 Problem documents for all handled error paths (depends on T006, T009).
+- [x] T012 [US1] Update the `setNotFoundHandler` in `packages/backend/src/plugins/error-handler.ts` to return a 404 Problem document (depends on T006, T010).
+- [x] T013 [US1] Ensure `packages/backend/test/integration/health.test.ts` and other error-path tests still pass with the new problem envelope (depends on T011).
+- [x] T014 [US1] Run `pnpm --filter @componode/backend test` and ensure all backend tests pass (depends on T009, T010, T013).
 
 **Checkpoint**: At this point, every API error returns `application/problem+json` and US1 is independently testable.
 
@@ -77,13 +77,13 @@
 
 ### Tests for User Story 2
 
-- [ ] T015 [US2] Create `packages/backend/test/integration/compatibility-errors.test.ts` with failing tests asserting `code`, `message`, and `details` are present in every problem document.
-- [ ] T016 [US2] Create `packages/frontend/src/test/unit/problem-error.test.tsx` with failing tests that the frontend can still read `code` and `message` from an RFC 7807 response.
+- [x] T015 [US2] Create `packages/backend/test/integration/compatibility-errors.test.ts` with failing tests asserting `code`, `message`, and `details` are present in every problem document.
+- [x] T016 [US2] Create `packages/frontend/src/test/unit/problem-error.test.tsx` with failing tests that the frontend can still read `code` and `message` from an RFC 7807 response.
 
 ### Implementation for User Story 2
 
-- [ ] T017 [US2] Verify `packages/frontend/src/api/client.ts` accepts `Content-Type: application/problem+json` responses and continues to expose `code`, `message`, and `details` as `ApiError` (depends on T011, T016).
-- [ ] T018 [US2] Run `pnpm --filter @componode/backend test` and `pnpm --filter @componode/frontend test` and verify no regressions (depends on T014, T015, T017).
+- [x] T017 [US2] Verify `packages/frontend/src/api/client.ts` accepts `Content-Type: application/problem+json` responses and continues to expose `code`, `message`, and `details` as `ApiError` (depends on T011, T016).
+- [x] T018 [US2] Run `pnpm --filter @componode/backend test` and `pnpm --filter @componode/frontend test` and verify no regressions (depends on T014, T015, T017).
 
 **Checkpoint**: User Story 1 and User Story 2 both work; the frontend and existing tests are unbroken.
 
@@ -97,15 +97,15 @@
 
 ### Tests for User Story 3
 
-- [ ] T019 [US3] Create the `packages/backend/test/contract/` directory and `openapi-errors.test.ts` with failing tests that every error response in `docs/openapi.yaml` references the `Problem` schema.
-- [ ] T020 [US3] Create `packages/backend/test/contract/openapi-problem-schema.test.ts` with failing tests that the `Problem` schema includes `type`, `title`, `status`, `code`, `message`, `details`, and `invalid-params`.
+- [x] T019 [US3] Create the `packages/backend/test/contract/` directory and `openapi-errors.test.ts` with failing tests that every error response in `docs/openapi.yaml` references the `Problem` schema.
+- [x] T020 [US3] Create `packages/backend/test/contract/openapi-problem-schema.test.ts` with failing tests that the `Problem` schema includes `type`, `title`, `status`, `code`, `message`, `details`, and `invalid-params`.
 
 ### Implementation for User Story 3
 
-- [ ] T021 [US3] Update `docs/openapi.yaml` `Error` schema to RFC 7807 `Problem` schema with Componode extensions (depends on T005).
-- [ ] T022 [US3] Update `docs/openapi.yaml` `components/responses` and error response `content` blocks to reference the `Problem` schema for all documented error responses (depends on T021).
-- [ ] T023 [US3] Update `docs/api.md` error section to describe `application/problem+json`, the `Problem` fields, and the `type` URI convention (depends on T021).
-- [ ] T024 [US3] Run `pnpm docs:build` and `scripts/test-docs-site.sh` and verify the Problem schema renders (depends on T020, T023).
+- [x] T021 [US3] Update `docs/openapi.yaml` `Error` schema to RFC 7807 `Problem` schema with Componode extensions (depends on T005).
+- [x] T022 [US3] Update `docs/openapi.yaml` `components/responses` and error response `content` blocks to reference the `Problem` schema for all documented error responses (depends on T021).
+- [x] T023 [US3] Update `docs/api.md` error section to describe `application/problem+json`, the `Problem` fields, and the `type` URI convention (depends on T021).
+- [x] T024 [US3] Run `pnpm docs:build` and `scripts/test-docs-site.sh` and verify the Problem schema renders (depends on T020, T023).
 
 **Checkpoint**: All user stories are independently functional and documented.
 
@@ -115,13 +115,13 @@
 
 **Purpose**: Final validation, consistency, and repository hygiene.
 
-- [ ] T025 [P] Run `pnpm lint` and fix any issues.
-- [ ] T026 [P] Run `pnpm typecheck` and fix any issues.
-- [ ] T027 [P] Run `pnpm build` and fix any issues.
-- [ ] T028 [P] Run `pnpm test` and fix any regressions.
-- [ ] T029 Run the quickstart validation scenarios in `specs/008-rfc-7807-errors/quickstart.md`.
-- [ ] T030 Run `speckit-analyze` across `specs/008-rfc-7807-errors/spec.md`, `plan.md`, and `tasks.md`.
-- [ ] T031 Update `README.md` Roadmap section to mark `008-rfc-7807-errors` complete and revise the `Next` entry (depends on T024).
+- [x] T025 [P] Run `pnpm lint` and fix any issues.
+- [x] T026 [P] Run `pnpm typecheck` and fix any issues.
+- [x] T027 [P] Run `pnpm build` and fix any issues.
+- [x] T028 [P] Run `pnpm test` and fix any regressions.
+- [x] T029 Run the quickstart validation scenarios in `specs/008-rfc-7807-errors/quickstart.md`.
+- [x] T030 Run `speckit-analyze` across `specs/008-rfc-7807-errors/spec.md`, `plan.md`, and `tasks.md`.
+- [x] T031 Update `README.md` Roadmap section to mark `008-rfc-7807-errors` complete and revise the `Next` entry (depends on T024).
 
 ---
 
