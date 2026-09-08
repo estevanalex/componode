@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { listUserSessions, revokeSession } from "../services/session-service.js";
 import { requireRole } from "../plugins/rbac.js";
 import type { AuthenticatedRequest } from "../plugins/session.js";
+import { toActor } from "../services/actor.js";
 
 export async function sessionRoutes(app: FastifyInstance): Promise<void> {
   // GET /sessions — list current user's sessions
@@ -27,7 +28,7 @@ export async function sessionRoutes(app: FastifyInstance): Promise<void> {
     // Users can revoke their own sessions; admins can revoke any.
     // :id is the session's non-secret publicId (UUID), not the token.
 
-    await revokeSession(id);
+    await revokeSession(id, toActor(req));
     return reply.status(204).send();
   });
 

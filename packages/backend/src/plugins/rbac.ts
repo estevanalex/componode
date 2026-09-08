@@ -13,6 +13,9 @@ const PERMISSIONS: Record<string, Role> = {
   "settings:update": "ADMIN",
   "oidc:configure": "ADMIN",
   "password:reset:generate": "ADMIN",
+  // Audit actions
+  "audit:feed": "ADMIN",
+  "audit:correct": "ADMIN",
   // Importer actions
   "importer:config:create": "ADMIN",
   "importer:config:update": "ADMIN",

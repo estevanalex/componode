@@ -1,3 +1,4 @@
+import { sql } from "kysely";
 import { uuidv7 } from "uuidv7";
 
 /**
@@ -53,22 +54,24 @@ export async function loginAs(
 export async function createSessionInDb(
   db: import("kysely").Kysely<unknown>,
   userId: string,
-): Promise<string> {
+): Promise<{ token: string; publicId: string }> {
   const { randomBytes } = await import("crypto");
   const token = randomBytes(32).toString("base64url");
+  const publicId = uuidv7();
   const now = new Date();
   const expiresAt = new Date(now.getTime() + 12 * 60 * 60 * 1000);
   await db
     .insertInto("sessions")
     .values({
       id: token,
+      publicId,
       userId,
       createdAt: now.toISOString(),
       lastSeenAt: now.toISOString(),
       expiresAt: expiresAt.toISOString(),
     })
     .execute();
-  return token;
+  return { token, publicId };
 }
 
 /** Insert a person directly into the DB and return its id. */
@@ -102,4 +105,26 @@ export async function createPersonInDb(
     })
     .execute();
   return id;
+}
+
+/**
+ * Truncate import and component-related tables plus audit tables in test
+ * teardown. `TRUNCATE ... CASCADE` bypasses the append-only row triggers on
+ * `entity_changes`, `edge_changes`, and `import_run_errors` while correctly
+ * handling the `importRunId` self-reference from `entity_changes` to
+ * `import_runs`.
+ */
+export async function truncateImportTables(db: import("kysely").Kysely<unknown>): Promise<void> {
+  await sql`
+    TRUNCATE TABLE
+      entity_changes,
+      edge_changes,
+      import_run_errors,
+      import_runs,
+      component_instances,
+      components,
+      component_groups,
+      importer_configs
+    RESTART IDENTITY CASCADE
+  `.execute(db);
 }

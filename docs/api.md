@@ -237,6 +237,7 @@ same fields plus `lifecycle`.
 | GET | `/api/v1/importer-configs/:configId/runs/:runId` | Get an import run | Authenticated |
 | GET | `/api/v1/importer-configs/:configId/runs/:runId/errors` | List errors for an import run | Authenticated |
 | POST | `/api/v1/importer-configs/:configId/runs/:runId/cancel` | Cancel a running or pending import run | `importer:run:cancel` |
+| GET | `/api/v1/importer-configs/:configId/runs/:runId/changes` | Import-run consequential changes | Authenticated |
 <!-- /GENERATED:table:Importers -->
 
 Notes:
@@ -286,3 +287,13 @@ pattern: `^[a-z0-9]+(?:-[a-z0-9]+)*$`.
 <!-- /GENERATED:table:Search -->
 
 Query params: `q` (required, ≤100 chars), `limit` (1–20, default 8).
+
+## Audit
+
+<!-- GENERATED:table:Audit -->
+| Method | Path | Description | Access |
+|---|---|---|---|
+| GET | `/api/v1/audit/activity` | Global activity feed | `audit:feed` |
+| GET | `/api/v1/audit/entities/:entityType/:entityId` | Per-entity history | Authenticated |
+| POST | `/api/v1/audit/corrections` | Append a correction entry | `audit:correct` |
+<!-- /GENERATED:table:Audit -->

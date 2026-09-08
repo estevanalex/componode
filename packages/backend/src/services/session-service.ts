@@ -1,16 +1,14 @@
 import { db } from "../db/connection.js";
 import { generateSessionToken } from "../utils/crypto.js";
 import { uuidv7 } from "uuidv7";
-
-const ABSOLUTE_TIMEOUT_MS = parseInt(
-  process.env.SESSION_ABSOLUTE_TIMEOUT_MS ?? "43200000",
-  10,
-); // 12h default
+import { getSetting } from "./settings-service.js";
+import { writeAuthEvent, type Actor } from "./audit-service.js";
 
 export async function createSession(userId: string): Promise<string> {
   const sessionToken = generateSessionToken();
   const now = new Date();
-  const expiresAt = new Date(now.getTime() + ABSOLUTE_TIMEOUT_MS);
+  const absoluteTimeoutMs = Number(await getSetting("sessionAbsoluteTimeoutMs"));
+  const expiresAt = new Date(now.getTime() + absoluteTimeoutMs);
 
   await db
     .insertInto("sessions")
@@ -31,16 +29,26 @@ export async function createSession(userId: string): Promise<string> {
  * Revoke a session by its non-secret publicId (never by the token — the
  * token is a credential and is not exposed to clients).
  */
-export async function revokeSession(publicId: string): Promise<void> {
+export async function revokeSession(publicId: string, actor: Actor): Promise<void> {
+  const session = await db
+    .selectFrom("sessions")
+    .select(["id", "userId"])
+    .where("sessions.publicId", "=", publicId)
+    .executeTakeFirst();
+
   const now = new Date().toISOString();
   await db
     .updateTable("sessions")
     .set({ revokedAt: now })
     .where("sessions.publicId", "=", publicId)
     .execute();
+
+  if (session) {
+    await writeAuthEvent("revoked", null, { id: session.userId, name: actor.name ?? actor.id });
+  }
 }
 
-export async function revokeUserSessions(userId: string): Promise<void> {
+export async function revokeUserSessions(userId: string, actor: Actor): Promise<void> {
   const now = new Date().toISOString();
   await db
     .updateTable("sessions")
@@ -48,6 +56,8 @@ export async function revokeUserSessions(userId: string): Promise<void> {
     .where("sessions.userId", "=", userId)
     .where("sessions.revokedAt", "is", null)
     .execute();
+
+  await writeAuthEvent("revoked", null, { id: userId, name: actor.name ?? actor.id });
 }
 
 /**

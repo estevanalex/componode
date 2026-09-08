@@ -1,8 +1,8 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { db } from "../db/connection.js";
+import { getSetting } from "../services/settings-service.js";
 
 const SESSION_COOKIE_NAME = "componode_session";
-const IDLE_TIMEOUT_MS = parseInt(process.env.SESSION_IDLE_TIMEOUT_MS ?? "1440000", 10); // 4h default
 const LAST_SEEN_UPDATE_INTERVAL_MS = 60_000; // Throttle lastSeenAt updates to once per 60s
 
 export interface AuthenticatedRequest extends FastifyRequest {
@@ -52,9 +52,10 @@ export async function sessionPlugin(app: FastifyInstance): Promise<void> {
     }
 
     // Idle timeout check
+    const idleTimeoutMs = Number(await getSetting("sessionIdleTimeoutMs"));
     const lastSeen = new Date(session.lastSeenAt);
     const idleMs = now.getTime() - lastSeen.getTime();
-    if (idleMs > IDLE_TIMEOUT_MS) {
+    if (idleMs > idleTimeoutMs) {
       return reply.status(401).send({ code: "AUTH_NO_SESSION", message: "Session idle timeout" });
     }
 

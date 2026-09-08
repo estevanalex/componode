@@ -99,7 +99,7 @@ describe("sessions", () => {
   it("admin lists a user's sessions via GET /api/v1/users/:id/sessions → 200", async () => {
     // Create a separate user with a session directly in the DB
     const userId = await createPersonInDb(testDb!.db, { username: "sessioned-user" });
-    const sessionId = await createSessionInDb(testDb!.db, userId);
+    const { publicId: sessionPublicId } = await createSessionInDb(testDb!.db, userId);
 
     const res = await app.inject({
       method: "GET",
@@ -110,16 +110,16 @@ describe("sessions", () => {
     expect(res.statusCode).toBe(200);
     const sessions = res.json().sessions;
     expect(Array.isArray(sessions)).toBe(true);
-    expect(sessions.some((s: { id: string }) => s.id === sessionId)).toBe(true);
+    expect(sessions.some((s: { id: string }) => s.id === sessionPublicId)).toBe(true);
   });
 
   it("admin revokes a session via POST /api/v1/sessions/:id/revoke → 204", async () => {
     const userId = await createPersonInDb(testDb!.db, { username: "revokable-user" });
-    const sessionId = await createSessionInDb(testDb!.db, userId);
+    const { token, publicId } = await createSessionInDb(testDb!.db, userId);
 
     const res = await app.inject({
       method: "POST",
-      url: `/api/v1/sessions/${sessionId}/revoke`,
+      url: `/api/v1/sessions/${publicId}/revoke`,
       cookies: { [SESSION_COOKIE_NAME]: adminSession!, ...csrfCookie },
       headers: csrfHeader,
     });
@@ -129,7 +129,7 @@ describe("sessions", () => {
     const authRes = await app.inject({
       method: "GET",
       url: "/api/v1/auth/session",
-      cookies: { [SESSION_COOKIE_NAME]: sessionId },
+      cookies: { [SESSION_COOKIE_NAME]: token },
     });
     expect(authRes.statusCode).toBe(401);
   });

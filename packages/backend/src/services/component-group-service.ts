@@ -10,6 +10,7 @@ import {
   listComponentGroupsQuerySchema,
 } from "@componode/core";
 import { db } from "../db/connection.js";
+import { writeEntityChange, type Actor } from "./audit-service.js";
 
 function isValidSlug(slug: string): boolean {
   return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) && slug.length <= 100;
@@ -27,6 +28,10 @@ async function assertUniqueSlug(slug: string, excludeId?: string): Promise<void>
       code: "SLUG_CONFLICT",
     });
   }
+}
+
+function actorName(actor: Actor): string | null {
+  return actor.name ?? actor.id;
 }
 
 export async function listComponentGroups(rawQuery: ListComponentGroupsQuery) {
@@ -76,7 +81,7 @@ export async function getComponentGroup(id: string) {
 
 export async function createComponentGroup(
   input: CreateComponentGroupInput,
-  createdBy: string | null,
+  actor: Actor,
 ) {
   const parsed = createComponentGroupSchema.parse(input);
   if (!isValidSlug(parsed.slug)) {
@@ -89,29 +94,57 @@ export async function createComponentGroup(
 
   const id = uuidv7();
   const now = new Date().toISOString();
-  await db
-    .insertInto("component_groups")
-    .values({
-      id,
-      name: parsed.name,
-      slug: parsed.slug,
-      description: parsed.description ?? null,
-      lifecycle: "ACTIVE",
-      teamOwnerId: parsed.teamOwnerId ?? null,
-      createdBy,
-      updatedBy: null,
-      createdAt: now,
-      updatedAt: now,
-    })
-    .execute();
+  return db.transaction().execute(async (trx) => {
+    await trx
+      .insertInto("component_groups")
+      .values({
+        id,
+        name: parsed.name,
+        slug: parsed.slug,
+        description: parsed.description ?? null,
+        lifecycle: "ACTIVE",
+        teamOwnerId: parsed.teamOwnerId ?? null,
+        createdBy: actor.id,
+        updatedBy: null,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .execute();
 
-  return getComponentGroup(id);
+    await writeEntityChange(
+      {
+        entityType: "component_group",
+        entityId: id,
+        action: "created",
+        changes: parsed as Record<string, unknown>,
+        actor,
+      },
+      trx,
+    );
+
+    return trx
+      .selectFrom("component_groups")
+      .leftJoin("teams", "component_groups.teamOwnerId", "teams.id")
+      .select([
+        "component_groups.id",
+        "component_groups.name",
+        "component_groups.slug",
+        "component_groups.description",
+        "component_groups.lifecycle",
+        "component_groups.teamOwnerId",
+        "teams.name as teamOwnerName",
+        "component_groups.createdAt",
+        "component_groups.updatedAt",
+      ])
+      .where("component_groups.id", "=", id)
+      .executeTakeFirst();
+  });
 }
 
 export async function updateComponentGroup(
   id: string,
   input: UpdateComponentGroupInput,
-  updatedBy: string | null,
+  actor: Actor,
 ) {
   const existing = await getComponentGroup(id);
   if (!existing) {
@@ -140,37 +173,74 @@ export async function updateComponentGroup(
     return existing;
   }
 
-  updates.updatedBy = updatedBy;
+  updates.updatedBy = actor.id;
   updates.updatedAt = new Date().toISOString();
 
-  await db
-    .updateTable("component_groups")
-    .set(updates)
-    .where("id", "=", id)
-    .execute();
+  return db.transaction().execute(async (trx) => {
+    await trx
+      .updateTable("component_groups")
+      .set(updates)
+      .where("id", "=", id)
+      .execute();
 
-  return getComponentGroup(id);
+    await writeEntityChange(
+      {
+        entityType: "component_group",
+        entityId: id,
+        action: parsed.lifecycle !== undefined && parsed.lifecycle !== existing.lifecycle ? "lifecycle" : "updated",
+        changes: { ...updates, actorName: actorName(actor) },
+        actor,
+      },
+      trx,
+    );
+
+    return trx
+      .selectFrom("component_groups")
+      .leftJoin("teams", "component_groups.teamOwnerId", "teams.id")
+      .select([
+        "component_groups.id",
+        "component_groups.name",
+        "component_groups.slug",
+        "component_groups.description",
+        "component_groups.lifecycle",
+        "component_groups.teamOwnerId",
+        "teams.name as teamOwnerName",
+        "component_groups.createdAt",
+        "component_groups.updatedAt",
+      ])
+      .where("component_groups.id", "=", id)
+      .executeTakeFirst();
+  });
 }
 
-export async function deleteComponentGroup(id: string) {
+export async function deleteComponentGroup(id: string, actor: Actor) {
   const existing = await getComponentGroup(id);
   if (!existing) {
     return null;
   }
 
-  // DB FK on components.componentGroupId uses ON DELETE SET NULL, so members are
-  // orphaned automatically.
-  await db
-    .deleteFrom("component_groups")
-    .where("id", "=", id)
-    .execute();
+  return db.transaction().execute(async (trx) => {
+    await trx.deleteFrom("component_groups").where("id", "=", id).execute();
 
-  return existing;
+    await writeEntityChange(
+      {
+        entityType: "component_group",
+        entityId: id,
+        action: "deleted",
+        changes: { name: existing.name, slug: existing.slug },
+        actor,
+      },
+      trx,
+    );
+
+    return existing;
+  });
 }
 
 export async function assignComponentGroup(
   componentId: string,
   input: UpdateComponentGroupAssignmentInput,
+  actor: Actor,
 ) {
   const parsed = updateComponentGroupAssignmentSchema.parse(input);
 
@@ -200,7 +270,7 @@ export async function assignComponentGroup(
 
   const existing = await db
     .selectFrom("components")
-    .select("id")
+    .selectAll()
     .where("id", "=", componentId)
     .executeTakeFirst();
   if (!existing) {
@@ -218,17 +288,33 @@ export async function assignComponentGroup(
     return getComponentGroupByComponentId(componentId);
   }
 
-  await db
-    .updateTable("components")
-    .set(updates)
-    .where("id", "=", componentId)
-    .execute();
+  return db.transaction().execute(async (trx) => {
+    await trx
+      .updateTable("components")
+      .set(updates)
+      .where("id", "=", componentId)
+      .execute();
 
-  return getComponentGroupByComponentId(componentId);
+    await writeEntityChange(
+      {
+        entityType: "component",
+        entityId: componentId,
+        action: "updated",
+        changes: updates,
+        actor,
+      },
+      trx,
+    );
+
+    return getComponentGroupByComponentIdWithTrx(trx, componentId);
+  });
 }
 
-async function getComponentGroupByComponentId(componentId: string) {
-  return db
+async function getComponentGroupByComponentIdWithTrx(
+  trx: import("kysely").Transaction<import("../db/types.js").DB> | typeof db,
+  componentId: string,
+) {
+  return trx
     .selectFrom("components")
     .leftJoin("component_groups", "components.componentGroupId", "component_groups.id")
     .select([
@@ -238,4 +324,8 @@ async function getComponentGroupByComponentId(componentId: string) {
     ])
     .where("components.id", "=", componentId)
     .executeTakeFirst();
+}
+
+async function getComponentGroupByComponentId(componentId: string) {
+  return getComponentGroupByComponentIdWithTrx(db, componentId);
 }

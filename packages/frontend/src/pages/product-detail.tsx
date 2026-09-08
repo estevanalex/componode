@@ -34,6 +34,7 @@ import { relativeTime, absoluteTime, MONO_CLASS } from "@/lib/format";
 import { useSetCrumbLabel } from "@/components/layout/crumb-context";
 import { ProductForm } from "@/components/products/product-form";
 import { EdgePicker, type EdgeTarget } from "@/components/products/edge-picker";
+import { EntityHistory } from "@/components/entity-history";
 import { cn } from "@/lib/utils";
 import type { ApiError } from "@/api/client";
 import type { ProductRef, ComponentDepRef, InstanceDepRef } from "@/api/types";
@@ -458,6 +459,15 @@ export function ProductDetailPage() {
           }}
         />
       )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">History</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <EntityHistory entityType="digital_product" entityId={product.id} />
+        </CardContent>
+      </Card>
     </div>
   );
 }

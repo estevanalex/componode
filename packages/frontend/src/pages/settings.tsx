@@ -135,6 +135,20 @@ function AppSettingsCard({ settings, saving, onSave }: AppSettingsCardProps) {
     if (!form) return;
     setError(null);
     setSaved(false);
+
+    if (form.sessionIdleTimeoutMs < 60000 || form.sessionIdleTimeoutMs > 86400000) {
+      setError("Idle timeout must be between 60,000 and 86,400,000 ms.");
+      return;
+    }
+    if (form.sessionAbsoluteTimeoutMs < 300000 || form.sessionAbsoluteTimeoutMs > 604800000) {
+      setError("Absolute timeout must be between 300,000 and 604,800,000 ms.");
+      return;
+    }
+    if (form.sessionIdleTimeoutMs >= form.sessionAbsoluteTimeoutMs) {
+      setError("Idle timeout must be less than absolute timeout.");
+      return;
+    }
+
     try {
       await onSave(form);
       setSaved(true);
@@ -166,12 +180,14 @@ function AppSettingsCard({ settings, saving, onSave }: AppSettingsCardProps) {
             <Input
               id="sessionIdleTimeoutMs"
               type="number"
-              min={0}
+              min={60000}
+              max={86400000}
               value={form.sessionIdleTimeoutMs}
               onChange={(e) =>
                 setForm({ ...form, sessionIdleTimeoutMs: Number(e.target.value) })
               }
             />
+            <p className="text-xs text-muted-foreground">Min 60,000 ms; max 86,400,000 ms.</p>
           </div>
 
           <div className="space-y-2">
@@ -179,12 +195,14 @@ function AppSettingsCard({ settings, saving, onSave }: AppSettingsCardProps) {
             <Input
               id="sessionAbsoluteTimeoutMs"
               type="number"
-              min={0}
+              min={300000}
+              max={604800000}
               value={form.sessionAbsoluteTimeoutMs}
               onChange={(e) =>
                 setForm({ ...form, sessionAbsoluteTimeoutMs: Number(e.target.value) })
               }
             />
+            <p className="text-xs text-muted-foreground">Min 300,000 ms; max 604,800,000 ms; must be greater than idle timeout.</p>
           </div>
 
           <div className="space-y-2">

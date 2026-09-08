@@ -32,6 +32,7 @@ import { ErrorState } from "@/components/states/error-state";
 import { Forbidden } from "@/components/states/forbidden";
 import { StatusBadge } from "@/components/states/status-badge";
 import { MONO_CLASS } from "@/lib/format";
+import { EntityHistory } from "@/components/entity-history";
 import type { ComponentGroup } from "@/api/types";
 import type { ApiError } from "@/api/client";
 
@@ -283,6 +284,9 @@ export function ComponentGroupsPage() {
                 teamOwnerId={form.teamOwnerId}
                 onTeamChange={(v) => setForm((f) => ({ ...f, teamOwnerId: v }))}
               />
+              {dialog.mode === "edit" && (
+                <EntityHistory entityType="component_group" entityId={dialog.group.id} />
+              )}
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setDialog(null)}>

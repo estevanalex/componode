@@ -13,6 +13,7 @@ import {
   updateImporterConfig,
   deleteImporterConfig,
 } from "../services/importer-config-service.js";
+import { toActor } from "../services/actor.js";
 import {
   startRun,
   cancelRun,
@@ -20,6 +21,7 @@ import {
   listRunsForConfig,
   listRunErrors,
 } from "../services/import-run-service.js";
+import { getRunChanges } from "../services/audit-query-service.js";
 
 export async function importerRoutes(app: FastifyInstance): Promise<void> {
   // Registry
@@ -69,7 +71,7 @@ export async function importerRoutes(app: FastifyInstance): Promise<void> {
       });
     }
 
-    const config = await createImporterConfig(parsed.data, req.user?.id ?? null);
+    const config = await createImporterConfig(parsed.data, toActor(req));
     return reply.status(201).send({ config });
   });
 
@@ -86,7 +88,7 @@ export async function importerRoutes(app: FastifyInstance): Promise<void> {
       });
     }
 
-    const config = await updateImporterConfig(id, parsed.data, req.user?.id ?? null);
+    const config = await updateImporterConfig(id, parsed.data, toActor(req));
     if (!config) {
       return reply.status(404).send({ code: "NOT_FOUND", message: "Importer config not found" });
     }
@@ -95,9 +97,9 @@ export async function importerRoutes(app: FastifyInstance): Promise<void> {
 
   app.delete("/importer-configs/:id", {
     preHandler: [app.verifySession, requireRole("importer:config:delete")],
-  }, async (req: FastifyRequest, reply: FastifyReply) => {
+  }, async (req: AuthenticatedRequest, reply: FastifyReply) => {
     const { id } = req.params as { id: string };
-    const config = await deleteImporterConfig(id);
+    const config = await deleteImporterConfig(id, toActor(req));
     if (!config) {
       return reply.status(404).send({ code: "NOT_FOUND", message: "Importer config not found" });
     }
@@ -146,6 +148,18 @@ export async function importerRoutes(app: FastifyInstance): Promise<void> {
     const { runId } = req.params as { configId: string; runId: string };
     const errors = await listRunErrors(runId);
     return reply.status(200).send({ errors });
+  });
+
+  app.get("/importer-configs/:configId/runs/:runId/changes", {
+    preHandler: [app.verifySession],
+  }, async (req: FastifyRequest, reply: FastifyReply) => {
+    const { runId } = req.params as { configId: string; runId: string };
+    const run = await getRun(runId);
+    if (!run) {
+      return reply.status(404).send({ code: "NOT_FOUND", message: "Run not found" });
+    }
+    const result = await getRunChanges(runId);
+    return reply.status(200).send(result);
   });
 
   app.post("/importer-configs/:configId/runs/:runId/cancel", {

@@ -4,6 +4,7 @@ import type { AuthenticatedRequest } from "../plugins/session.js";
 import { requireRole } from "../plugins/rbac.js";
 import { listComponents, getComponentById } from "../services/component-catalog-service.js";
 import { assignComponentGroup } from "../services/component-group-service.js";
+import { toActor } from "../services/actor.js";
 
 export async function componentRoutes(app: FastifyInstance): Promise<void> {
   app.get("/components/:id", {
@@ -31,7 +32,7 @@ export async function componentRoutes(app: FastifyInstance): Promise<void> {
     }
 
     try {
-      const result = await assignComponentGroup(id, parsed.data);
+      const result = await assignComponentGroup(id, parsed.data, toActor(req));
       return reply.status(200).send({ component: result });
     } catch (err) {
       const error = err as { statusCode?: number; code?: string; message?: string };

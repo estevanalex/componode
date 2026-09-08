@@ -3,6 +3,8 @@ import { createHash } from "crypto";
 import { db } from "../db/connection.js";
 import { EnvSecretResolver } from "../utils/secret-resolver.js";
 import { createSession } from "./session-service.js";
+import { getSetting } from "./settings-service.js";
+import { writeAuthEvent, writeEntityChange } from "./audit-service.js";
 import type { Role } from "@componode/core";
 
 interface OidcState {
@@ -47,17 +49,7 @@ async function getOidcConfig() {
   return config;
 }
 
-async function getAppSettings() {
-  const rows = await db
-    .selectFrom("app_settings")
-    .select(["app_settings.key", "app_settings.value"])
-    .execute();
-  const settings: Record<string, unknown> = {};
-  for (const row of rows) {
-    settings[row.key] = row.value;
-  }
-  return settings;
-}
+
 
 export async function initiateLogin(redirectUri: string = "/"): Promise<string> {
   const config = await getOidcConfig();
@@ -163,38 +155,48 @@ export async function handleCallback(code: string, state: string): Promise<{ ses
     .executeTakeFirst();
 
   if (!user) {
-    // JIT provision with default role
-    const settings = await getAppSettings();
-    const defaultRole = (settings.default_user_role as Role) ?? "VIEWER";
+    const defaultRole = String(await getSetting("defaultUserRole") ?? "VIEWER") as Role;
     const usernameRaw = (claims.preferred_username ?? claims.email ?? `oidc-${oidcSubject.slice(0, 12)}`) as string;
     const username = usernameRaw.toLowerCase();
     const now = new Date().toISOString();
 
     const id = uuidv7();
     await db
-      .insertInto("persons")
-      .values({
-        id,
-        username,
-        oidcSubject,
-        role: defaultRole,
-        displayName: claims.name ?? null,
-        email: claims.email ?? null,
-        slug: username.replace(/[^a-z0-9_-]/g, "-"),
-        isActive: true,
-        createdAt: now,
-        updatedAt: now,
-      })
-      .execute();
+      .transaction()
+      .execute(async (trx) => {
+        await trx
+          .insertInto("persons")
+          .values({
+            id,
+            username,
+            oidcSubject,
+            role: defaultRole,
+            displayName: claims.name ?? null,
+            email: claims.email ?? null,
+            slug: username.replace(/[^a-z0-9_-]/g, "-"),
+            isActive: true,
+            createdAt: now,
+            updatedAt: now,
+          })
+          .execute();
+
+        await writeEntityChange(
+          {
+            entityType: "user",
+            entityId: id,
+            action: "created",
+            changes: { role: defaultRole, oidcSubject, source: "oidc" },
+            actor: { id: null, name: `oidc:${username}` },
+          },
+          trx,
+        );
+      });
 
     user = await db
       .selectFrom("persons")
       .selectAll()
       .where("persons.id", "=", id)
       .executeTakeFirst();
-  } else {
-    // Local admin override: existing user's role takes precedence over claim mapping
-    // (no role update from OIDC claims for existing users)
   }
 
   if (!user || !user.isActive) {
@@ -205,6 +207,11 @@ export async function handleCallback(code: string, state: string): Promise<{ ses
   }
 
   const sessionToken = await createSession(user.id);
+
+  await writeAuthEvent("oidc_signin", null, {
+    id: user.id,
+    name: user.displayName ?? user.username,
+  });
 
   return { sessionToken, redirectUri: storedState.redirectUri };
 }
