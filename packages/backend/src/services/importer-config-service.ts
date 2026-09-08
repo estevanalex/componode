@@ -5,6 +5,7 @@ import { db } from "../db/connection.js";
 import { getManifest } from "./importer-registry.js";
 import * as cron from "node-cron";
 import { scheduleConfig, rescheduleConfig, unscheduleConfig } from "./scheduler-service.js";
+import { writeEntityChange, type Actor } from "./audit-service.js";
 
 function assertValidSchedule(schedule: string | null | undefined): void {
   if (!schedule) return;
@@ -36,6 +37,13 @@ async function validateScopeForImporter(
   }
 }
 
+function maskSecretRefs(
+  secretRefs: Array<{ key: string; env?: string; file?: string }> | undefined,
+): Array<{ key: string; env?: string; file?: string }> | undefined {
+  if (!secretRefs) return undefined;
+  return secretRefs.map((ref) => ({ key: ref.key }));
+}
+
 export async function listImporterConfigs() {
   return db
     .selectFrom("importer_configs")
@@ -64,45 +72,58 @@ export async function getImporterConfig(id: string) {
 
 export async function createImporterConfig(
   input: CreateImporterConfigInput,
-  createdBy: string | null,
+  actor: Actor,
 ) {
   await validateScopeForImporter(input.importerName, input.scope);
   assertValidSchedule(input.schedule);
 
   const id = uuidv7();
   const now = new Date().toISOString();
-  await db
-    .insertInto("importer_configs")
-    .values({
-      id,
-      importerName: input.importerName,
-      label: input.label,
-      scope: input.scope,
-      // The `secretRefs` column is `jsonb`; node-postgres serialises JS arrays as
-      // Postgres array literals ({}), which `jsonb` parses as an empty object.
-      // Stringify the JSON array so Postgres stores it as a JSON array instead.
-      secretRefs: JSON.stringify(input.secretRefs ?? []) as unknown as Array<{
-        key: string;
-        env?: string;
-        file?: string;
-      }>,
-      schedule: input.schedule ?? null,
-      enabled: input.enabled,
-      createdBy,
-      updatedBy: null,
-      createdAt: now,
-      updatedAt: now,
-    })
-    .execute();
+  return db.transaction().execute(async (trx) => {
+    await trx
+      .insertInto("importer_configs")
+      .values({
+        id,
+        importerName: input.importerName,
+        label: input.label,
+        scope: input.scope,
+        secretRefs: JSON.stringify(input.secretRefs ?? []) as unknown as Array<{
+          key: string;
+          env?: string;
+          file?: string;
+        }>,
+        schedule: input.schedule ?? null,
+        enabled: input.enabled,
+        createdBy: actor.id,
+        updatedBy: null,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .execute();
 
-  await scheduleConfig({ id, schedule: input.schedule ?? null, enabled: input.enabled });
-  return getImporterConfig(id);
+    await writeEntityChange(
+      {
+        entityType: "importer_config",
+        entityId: id,
+        action: "created",
+        changes: {
+          ...input,
+          secretRefs: maskSecretRefs(input.secretRefs),
+        },
+        actor,
+      },
+      trx,
+    );
+
+    await scheduleConfig({ id, schedule: input.schedule ?? null, enabled: input.enabled });
+    return getImporterConfigWithTrx(trx, id);
+  });
 }
 
 export async function updateImporterConfig(
   id: string,
   input: UpdateImporterConfigInput,
-  updatedBy: string | null,
+  actor: Actor,
 ) {
   const existing = await getImporterConfig(id);
   if (!existing) {
@@ -132,33 +153,70 @@ export async function updateImporterConfig(
     return existing;
   }
 
-  updates.updatedBy = updatedBy;
+  updates.updatedBy = actor.id;
   updates.updatedAt = new Date().toISOString();
 
-  await db
-    .updateTable("importer_configs")
-    .set(updates)
-    .where("id", "=", id)
-    .execute();
+  return db.transaction().execute(async (trx) => {
+    await trx
+      .updateTable("importer_configs")
+      .set(updates)
+      .where("id", "=", id)
+      .execute();
 
-  const updated = await getImporterConfig(id);
-  if (updated) {
-    await rescheduleConfig({ id: updated.id, schedule: updated.schedule, enabled: updated.enabled });
-  }
-  return updated;
+    await writeEntityChange(
+      {
+        entityType: "importer_config",
+        entityId: id,
+        action: "updated",
+        changes: {
+          ...updates,
+          secretRefs: input.secretRefs !== undefined ? maskSecretRefs(input.secretRefs) : undefined,
+        },
+        actor,
+      },
+      trx,
+    );
+
+    const updated = await getImporterConfigWithTrx(trx, id);
+    if (updated) {
+      await rescheduleConfig({ id: updated.id, schedule: updated.schedule, enabled: updated.enabled });
+    }
+    return updated;
+  });
 }
 
-export async function deleteImporterConfig(id: string) {
+export async function deleteImporterConfig(id: string, actor: Actor) {
   const existing = await getImporterConfig(id);
   if (!existing) {
     return null;
   }
 
-  await db
-    .deleteFrom("importer_configs")
-    .where("id", "=", id)
-    .execute();
+  return db.transaction().execute(async (trx) => {
+    await trx.deleteFrom("importer_configs").where("id", "=", id).execute();
 
-  unscheduleConfig(id);
-  return existing;
+    await writeEntityChange(
+      {
+        entityType: "importer_config",
+        entityId: id,
+        action: "deleted",
+        changes: { label: existing.label, importerName: existing.importerName },
+        actor,
+      },
+      trx,
+    );
+
+    unscheduleConfig(id);
+    return existing;
+  });
+}
+
+async function getImporterConfigWithTrx(
+  trx: import("kysely").Transaction<import("../db/types.js").DB> | typeof db,
+  id: string,
+) {
+  return trx
+    .selectFrom("importer_configs")
+    .selectAll()
+    .where("id", "=", id)
+    .executeTakeFirst();
 }

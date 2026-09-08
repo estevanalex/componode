@@ -87,14 +87,13 @@ export async function createOrgEntity(
         updatedAt: now,
       })
       .execute();
-    await writeEntityChange(
-      ENTITY_TYPE[table],
-      id,
-      "created",
-      parsed as Record<string, unknown>,
+    await writeEntityChange({
+      entityType: ENTITY_TYPE[table],
+      entityId: id,
+      action: "created",
+      changes: parsed as Record<string, unknown>,
       actor,
-      trx,
-    );
+    }, trx);
     return trx
       .selectFrom(table)
       .selectAll()
@@ -123,7 +122,13 @@ export async function updateOrgEntity(
 
   return db.transaction().execute(async (trx) => {
     await trx.updateTable(table).set(updates).where("id", "=", id).execute();
-    await writeEntityChange(ENTITY_TYPE[table], id, "updated", updates, actor, trx);
+    await writeEntityChange({
+      entityType: ENTITY_TYPE[table],
+      entityId: id,
+      action: "updated",
+      changes: updates,
+      actor,
+    }, trx);
     return trx
       .selectFrom(table)
       .selectAll()
@@ -174,14 +179,13 @@ export async function deleteOrgEntity(table: OrgTable, id: string, actor: Actor)
 
   return db.transaction().execute(async (trx) => {
     await trx.deleteFrom(table).where("id", "=", id).execute();
-    await writeEntityChange(
-      ENTITY_TYPE[table],
-      id,
-      "deleted",
-      { name: existing.name, slug: existing.slug },
+    await writeEntityChange({
+      entityType: ENTITY_TYPE[table],
+      entityId: id,
+      action: "deleted",
+      changes: { name: existing.name, slug: existing.slug },
       actor,
-      trx,
-    );
+    }, trx);
     return existing;
   });
 }

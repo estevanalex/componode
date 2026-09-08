@@ -2,6 +2,8 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { updateSettingsSchema, updateOidcConfigSchema } from "@componode/core";
 import { getSettings, updateSettings, getOidcConfig, updateOidcConfig } from "../services/settings-service.js";
 import { requireRole } from "../plugins/rbac.js";
+import type { AuthenticatedRequest } from "../plugins/session.js";
+import { toActor } from "../services/actor.js";
 
 export async function settingsRoutes(app: FastifyInstance): Promise<void> {
   // GET /settings — admin only
@@ -15,7 +17,7 @@ export async function settingsRoutes(app: FastifyInstance): Promise<void> {
   // PATCH /settings — admin only
   app.patch("/settings", {
     preHandler: [app.verifySession, requireRole("settings:update")],
-  }, async (req: FastifyRequest, reply: FastifyReply) => {
+  }, async (req: AuthenticatedRequest, reply: FastifyReply) => {
     const parsed = updateSettingsSchema.safeParse(req.body);
     if (!parsed.success) {
       return reply.status(400).send({
@@ -24,7 +26,7 @@ export async function settingsRoutes(app: FastifyInstance): Promise<void> {
         details: parsed.error.issues,
       });
     }
-    const settings = await updateSettings(parsed.data);
+    const settings = await updateSettings(parsed.data, toActor(req));
     return reply.status(200).send({ settings });
   });
 
@@ -39,7 +41,7 @@ export async function settingsRoutes(app: FastifyInstance): Promise<void> {
   // PUT /settings/oidc — admin only
   app.put("/settings/oidc", {
     preHandler: [app.verifySession, requireRole("oidc:configure")],
-  }, async (req: FastifyRequest, reply: FastifyReply) => {
+  }, async (req: AuthenticatedRequest, reply: FastifyReply) => {
     const parsed = updateOidcConfigSchema.safeParse(req.body);
     if (!parsed.success) {
       return reply.status(400).send({
@@ -48,7 +50,7 @@ export async function settingsRoutes(app: FastifyInstance): Promise<void> {
         details: parsed.error.issues,
       });
     }
-    const oidcConfig = await updateOidcConfig(parsed.data);
+    const oidcConfig = await updateOidcConfig(parsed.data, toActor(req));
     return reply.status(200).send({ oidcConfig });
   });
 }

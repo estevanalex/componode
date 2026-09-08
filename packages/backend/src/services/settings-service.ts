@@ -1,5 +1,6 @@
 import { db } from "../db/connection.js";
 import type { UpdateSettingsInput, UpdateOidcConfigInput } from "@componode/core";
+import { writeEntityChange, type Actor } from "./audit-service.js";
 
 const DEFAULT_SETTINGS = {
   allowSelfRegistration: false,
@@ -7,6 +8,30 @@ const DEFAULT_SETTINGS = {
   sessionAbsoluteTimeoutMs: 43200000, // 12 hours
   defaultUserRole: "VIEWER" as const,
 };
+
+const ENV_OVERRIDE_NAMES: Record<string, string> = {
+  allowSelfRegistration: "ALLOW_SELF_REGISTRATION",
+  sessionIdleTimeoutMs: "SESSION_IDLE_TIMEOUT_MS",
+  sessionAbsoluteTimeoutMs: "SESSION_ABSOLUTE_TIMEOUT_MS",
+  defaultUserRole: "DEFAULT_USER_ROLE",
+};
+
+let settingsCache: Map<string, unknown> | null = null;
+
+function parseEnvValue(key: string, raw: string): unknown {
+  if (key === "allowSelfRegistration") {
+    return raw === "true" || raw === "1";
+  }
+  if (key === "sessionIdleTimeoutMs" || key === "sessionAbsoluteTimeoutMs") {
+    const parsed = parseInt(raw, 10);
+    return Number.isNaN(parsed) ? undefined : parsed;
+  }
+  return raw;
+}
+
+function clearSettingsCache() {
+  settingsCache = null;
+}
 
 export async function getSettings() {
   const rows = await db
@@ -18,21 +43,77 @@ export async function getSettings() {
   for (const row of rows) {
     settings[row.key] = row.value;
   }
+
+  for (const key of Object.keys(DEFAULT_SETTINGS)) {
+    const envName = ENV_OVERRIDE_NAMES[key];
+    const envRaw = envName ? process.env[envName] : undefined;
+    if (envRaw !== undefined) {
+      const parsed = parseEnvValue(key, envRaw);
+      if (parsed !== undefined) {
+        settings[key] = parsed;
+      }
+    }
+  }
+
   return settings;
 }
 
-export async function updateSettings(input: UpdateSettingsInput) {
-  const now = new Date().toISOString();
-  for (const [key, value] of Object.entries(input)) {
-    if (value === undefined) continue;
-    await db
-      .insertInto("app_settings")
-      .values({ key, value, updatedAt: now })
-      .onConflict((oc) =>
-        oc.column("key").doUpdateSet({ value, updatedAt: now }),
-      )
-      .execute();
+export async function getSetting(key: keyof typeof DEFAULT_SETTINGS): Promise<unknown> {
+  const envName = ENV_OVERRIDE_NAMES[key];
+  const envRaw = envName ? process.env[envName] : undefined;
+  if (envRaw !== undefined) {
+    const parsed = parseEnvValue(key, envRaw);
+    if (parsed !== undefined) return parsed;
   }
+
+  if (!settingsCache) {
+    settingsCache = new Map();
+    const rows = await db
+      .selectFrom("app_settings")
+      .select(["app_settings.key", "app_settings.value"])
+      .execute();
+    for (const row of rows) {
+      settingsCache.set(row.key, row.value);
+    }
+  }
+
+  return settingsCache.get(key) ?? DEFAULT_SETTINGS[key];
+}
+
+export async function updateSettings(input: UpdateSettingsInput, actor: Actor) {
+  const now = new Date().toISOString();
+  const changes: Record<string, unknown> = {};
+
+  await db.transaction().execute(async (trx) => {
+    for (const [key, value] of Object.entries(input)) {
+      if (value === undefined) continue;
+      changes[key] = value;
+      const jsonValue = JSON.stringify(value);
+      await trx
+        .insertInto("app_settings")
+        .values({ key, value: jsonValue, updatedAt: now })
+        .onConflict((oc) =>
+          oc.column("key").doUpdateSet({ value: jsonValue, updatedAt: now }),
+        )
+        .execute();
+    }
+
+    if (Object.keys(changes).length > 0) {
+      await writeEntityChange(
+        {
+          entityType: "settings",
+          entityId: null,
+          action: "updated",
+          changes,
+          actor,
+        },
+        trx,
+      );
+    }
+
+    clearSettingsCache();
+  });
+
   return getSettings();
 }
 
@@ -58,10 +139,9 @@ export async function getOidcConfig() {
   return config;
 }
 
-export async function updateOidcConfig(input: UpdateOidcConfigInput) {
+export async function updateOidcConfig(input: UpdateOidcConfigInput, actor: Actor) {
   const now = new Date().toISOString();
 
-  // Validate issuer discovery if OIDC is being enabled
   if (input.enabled) {
     if (!input.issuer) {
       throw Object.assign(new Error("OIDC issuer is required when enabled"), {
@@ -104,22 +184,40 @@ export async function updateOidcConfig(input: UpdateOidcConfigInput) {
     updatedAt: now,
   };
 
-  await db
-    .insertInto("oidc_config")
-    .values(values)
-    .onConflict((oc) =>
-      oc.column("id").doUpdateSet({
-        enabled: values.enabled,
-        issuer: values.issuer,
-        clientId: values.clientId,
-        clientSecretRef: values.clientSecretRef,
-        roleClaimPath: values.roleClaimPath,
-        claimValueField: values.claimValueField,
-        roleMapping: values.roleMapping,
-        updatedAt: now,
-      }),
-    )
-    .execute();
+  const auditChanges: Record<string, unknown> = { ...values };
+  if (input.clientSecretRef !== undefined) {
+    auditChanges.clientSecretRef = input.clientSecretRef ? "***" : null;
+  }
+
+  await db.transaction().execute(async (trx) => {
+    await trx
+      .insertInto("oidc_config")
+      .values(values)
+      .onConflict((oc) =>
+        oc.column("id").doUpdateSet({
+          enabled: values.enabled,
+          issuer: values.issuer,
+          clientId: values.clientId,
+          clientSecretRef: values.clientSecretRef,
+          roleClaimPath: values.roleClaimPath,
+          claimValueField: values.claimValueField,
+          roleMapping: values.roleMapping,
+          updatedAt: now,
+        }),
+      )
+      .execute();
+
+    await writeEntityChange(
+      {
+        entityType: "settings",
+        entityId: null,
+        action: "updated",
+        changes: { oidc: auditChanges },
+        actor,
+      },
+      trx,
+    );
+  });
 
   return getOidcConfig();
 }

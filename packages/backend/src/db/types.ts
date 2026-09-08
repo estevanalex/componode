@@ -190,9 +190,10 @@ export interface ImportRunErrorRow {
 export interface EntityChangeRow {
   id: string;
   entityType: string;
-  entityId: string;
+  entityId: string | null;
   action: string;
   changes: Record<string, unknown> | null;
+  importRunId: string | null;
   createdBy: string | null;
   createdByName: string | null;
   createdAt: Generated<string>;

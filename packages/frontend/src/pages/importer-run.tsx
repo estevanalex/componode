@@ -5,6 +5,7 @@ import {
   useCancelImportRun,
   useImportRunErrors,
 } from "@/api/hooks/importers";
+import { useRunChanges } from "@/api/hooks/audit";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -45,10 +46,18 @@ export function ImporterRunPage() {
     error: errorsError,
     refetch: refetchErrors,
   } = useImportRunErrors(configId ?? null, runId ?? null);
+  const {
+    data: changesData,
+    isPending: changesPending,
+    isFetching: changesFetching,
+    error: changesError,
+    refetch: refetchChanges,
+  } = useRunChanges(configId ?? "", runId ?? "");
   const cancel = useCancelImportRun();
 
   const run = data?.run;
   const errors = errorsData?.errors ?? [];
+  const changes = changesData?.changes ?? [];
   useSetCrumbLabel(runId ? `run-${runId.slice(-8)}` : null);
 
   const isActive = run?.status === "PENDING" || run?.status === "RUNNING";
@@ -191,6 +200,59 @@ export function ImporterRunPage() {
                             <TableCell>
                               <span title={absoluteTime(err.createdAt)}>
                                 {relativeTime(err.createdAt)}
+                              </span>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Changes produced by this run</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {changesPending && changes.length === 0 && <TableSkeleton rows={3} columns={4} />}
+
+                {!changesPending && changesError && (
+                  <ErrorState
+                    error={changesError}
+                    onRetry={() => refetchChanges()}
+                    title="Failed to load run changes"
+                  />
+                )}
+
+                {!changesPending && !changesError && changes.length === 0 && (
+                  <p className="text-sm text-muted-foreground">No recorded changes for this run.</p>
+                )}
+
+                {!changesPending && !changesError && changes.length > 0 && (
+                  <>
+                    {changesFetching && (
+                      <p className="mb-2 text-xs text-muted-foreground">Updating…</p>
+                    )}
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Entity type</TableHead>
+                          <TableHead>Action</TableHead>
+                          <TableHead>Actor</TableHead>
+                          <TableHead>Time</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {changes.map((change) => (
+                          <TableRow key={change.id}>
+                            <TableCell className="capitalize">{change.entityType.replace(/_/g, " ")}</TableCell>
+                            <TableCell>{change.action}</TableCell>
+                            <TableCell>{change.createdByName ?? change.createdBy ?? "system"}</TableCell>
+                            <TableCell>
+                              <span title={absoluteTime(change.createdAt)}>
+                                {relativeTime(change.createdAt)}
                               </span>
                             </TableCell>
                           </TableRow>

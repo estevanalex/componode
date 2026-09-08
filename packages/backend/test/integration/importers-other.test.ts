@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from "vitest";
 import { startTestDb, type TestDb } from "../helpers/testcontainers.js";
-import { csrfCookie, csrfHeader, loginAs, SESSION_COOKIE_NAME } from "../helpers/api.js";
+import { csrfCookie, csrfHeader, loginAs, SESSION_COOKIE_NAME, truncateImportTables } from "../helpers/api.js";
 
 const ADMIN_USERNAME = "admin";
 const ADMIN_PASSWORD = "AdminPassword123!";
@@ -38,11 +38,7 @@ describe("importers other", () => {
 
   beforeEach(async () => {
     if (!testDb) return;
-    await testDb.db.deleteFrom("import_run_errors").execute();
-    await testDb.db.deleteFrom("import_runs").execute();
-    await testDb.db.deleteFrom("component_instances").execute();
-    await testDb.db.deleteFrom("components").execute();
-    await testDb.db.deleteFrom("importer_configs").execute();
+    await truncateImportTables(testDb.db);
     vi.clearAllMocks();
   });
 

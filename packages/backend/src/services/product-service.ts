@@ -316,7 +316,13 @@ export async function createProduct(input: CreateProductInput, actor: Actor) {
         updatedAt: now,
       })
       .execute();
-    await writeEntityChange("digital_product", id, "created", parsed as Record<string, unknown>, actor, trx);
+    await writeEntityChange({
+      entityType: "digital_product",
+      entityId: id,
+      action: "created",
+      changes: parsed as Record<string, unknown>,
+      actor,
+    }, trx);
     return trx
       .selectFrom("digital_products")
       .selectAll()
@@ -398,7 +404,13 @@ export async function updateProduct(id: string, input: UpdateProductInput, actor
         : parsed.lifecycle === "ACTIVE" && prevLifecycle === "RETIRED"
           ? "unretired"
           : "updated";
-    await writeEntityChange("digital_product", id, action, updates, actor, trx);
+    await writeEntityChange({
+      entityType: "digital_product",
+      entityId: id,
+      action,
+      changes: updates,
+      actor,
+    }, trx);
     return trx
       .selectFrom("digital_products")
       .selectAll()
@@ -422,14 +434,13 @@ export async function deleteProduct(id: string, actor: Actor) {
 
   return db.transaction().execute(async (trx) => {
     await trx.deleteFrom("digital_products").where("id", "=", id).execute();
-    await writeEntityChange(
-      "digital_product",
-      id,
-      "deleted",
-      { name: existing.name, slug: existing.slug },
+    await writeEntityChange({
+      entityType: "digital_product",
+      entityId: id,
+      action: "deleted",
+      changes: { name: existing.name, slug: existing.slug },
       actor,
-      trx,
-    );
+    }, trx);
     return existing;
   });
 }

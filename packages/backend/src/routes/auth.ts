@@ -1,14 +1,16 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { loginSchema, registerSchema, passwordChangeSchema, passwordResetConfirmSchema } from "@componode/core";
-import { login, logout } from "../services/auth-service.js";
+import type { CreateUserInput } from "@componode/core";
+import { login, logout, changePassword } from "../services/auth-service.js";
 import { generatePasswordReset, confirmPasswordReset } from "../services/password-reset-service.js";
 import { initiateLogin, handleCallback, isOidcEnabled } from "../services/oidc-service.js";
-import { hashPassword, verifyPassword } from "../utils/argon2.js";
-import { db } from "../db/connection.js";
 import { createSession } from "../services/session-service.js";
-import { uuidv7 } from "uuidv7";
+import { getSetting } from "../services/settings-service.js";
+import { createUser } from "../services/user-service.js";
+import { writeAuthEvent } from "../services/audit-service.js";
 import { requireRole } from "../plugins/rbac.js";
 import { SESSION_COOKIE_NAME, type AuthenticatedRequest } from "../plugins/session.js";
+import { toActor } from "../services/actor.js";
 
 const SESSION_COOKIE_OPTIONS = {
   httpOnly: true,
@@ -54,7 +56,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
   app.post("/auth/logout", async (req: AuthenticatedRequest, reply: FastifyReply) => {
     const sessionToken = req.cookies?.[SESSION_COOKIE_NAME];
     if (sessionToken) {
-      await logout(sessionToken);
+      await logout(sessionToken, toActor(req));
     }
     reply.clearCookie(SESSION_COOKIE_NAME, { path: "/" });
     reply.clearCookie("componode_csrf", { path: "/" });
@@ -87,30 +89,16 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       return reply.status(401).send({ code: "AUTH_NO_SESSION", message: "Not authenticated" });
     }
 
-    // Load current password hash
-    const person = await db
-      .selectFrom("persons")
-      .select(["persons.id", "persons.passwordHash"])
-      .where("persons.id", "=", req.user.id)
-      .executeTakeFirst();
-
-    if (!person || !person.passwordHash) {
-      return reply.status(401).send({ code: "AUTH_INVALID_CREDENTIALS", message: "No password set" });
+    try {
+      await changePassword(req.user.id, parsed.data.currentPassword, parsed.data.newPassword, toActor(req));
+      return reply.status(204).send();
+    } catch (err) {
+      const error = err as { statusCode?: number; code?: string; message?: string };
+      if (error.statusCode === 401) {
+        return reply.status(401).send({ code: error.code ?? "AUTH_INVALID_CREDENTIALS", message: error.message ?? "Invalid credentials" });
+      }
+      throw err;
     }
-
-    const valid = await verifyPassword(parsed.data.currentPassword, person.passwordHash);
-    if (!valid) {
-      return reply.status(401).send({ code: "AUTH_INVALID_CREDENTIALS", message: "Current password is incorrect" });
-    }
-
-    const newHash = await hashPassword(parsed.data.newPassword);
-    await db
-      .updateTable("persons")
-      .set({ passwordHash: newHash, updatedAt: new Date().toISOString() })
-      .where("persons.id", "=", req.user.id)
-      .execute();
-
-    return reply.status(204).send();
   });
 
   // POST /auth/password/reset — admin only, generates reset token
@@ -122,7 +110,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       return reply.status(400).send({ code: "VALIDATION_FAILED", message: "userId is required" });
     }
 
-    const token = await generatePasswordReset(body.userId);
+    const token = await generatePasswordReset(body.userId, toActor(req));
     return reply.status(200).send({ token });
   });
 
@@ -138,7 +126,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     }
 
     try {
-      await confirmPasswordReset(parsed.data.token, parsed.data.newPassword);
+      await confirmPasswordReset(parsed.data.token, parsed.data.newPassword, { id: null, name: null });
       return reply.status(204).send();
     } catch (err) {
       const error = err as { statusCode?: number; code?: string; message?: string };
@@ -156,14 +144,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
   app.post("/auth/register", {
     config: { rateLimit: { max: 3, timeWindow: "1 minute" } },
   }, async (req: FastifyRequest, reply: FastifyReply) => {
-    // Check if self-registration is enabled
-    const settingsRow = await db
-      .selectFrom("app_settings")
-      .select("app_settings.value")
-      .where("app_settings.key", "=", "allow_self_registration")
-      .executeTakeFirst();
-
-    const allowSelfRegistration = settingsRow?.value === true;
+    const allowSelfRegistration = Boolean(await getSetting("allowSelfRegistration"));
     if (!allowSelfRegistration) {
       return reply.status(404).send({ code: "NOT_FOUND", message: "Self-registration is not enabled" });
     }
@@ -177,49 +158,40 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       });
     }
 
-    // Check username uniqueness
-    const existing = await db
-      .selectFrom("persons")
-      .select("persons.id")
-      .where("persons.username", "=", parsed.data.username)
-      .executeTakeFirst();
+    const defaultRole = String(await getSetting("defaultUserRole") ?? "VIEWER");
+    const userInput: CreateUserInput = {
+      ...parsed.data,
+      role: defaultRole as CreateUserInput["role"],
+    };
 
-    if (existing) {
-      return reply.status(409).send({ code: "AUTH_USERNAME_TAKEN", message: "Username already taken" });
+    try {
+      const user = await createUser(userInput, { id: null, name: userInput.username });
+      if (!user) {
+        return reply.status(500).send({ code: "INTERNAL_ERROR", message: "Failed to create user" });
+      }
+
+      const sessionToken = await createSession(user.id);
+      reply.setCookie(SESSION_COOKIE_NAME, sessionToken, SESSION_COOKIE_OPTIONS);
+      const csrfToken = (reply as unknown as { setCsrfCookie: () => string }).setCsrfCookie();
+
+      await writeAuthEvent("login", null, { id: user.id, name: user.displayName ?? user.username });
+
+      return reply.status(201).send({
+        user: {
+          id: user.id,
+          username: user.username,
+          role: user.role,
+          displayName: user.displayName,
+        },
+        csrfToken,
+      });
+    } catch (err) {
+      const error = err as { statusCode?: number; code?: string; message?: string };
+      if (error.statusCode === 409) {
+        return reply.status(409).send({ code: error.code ?? "AUTH_USERNAME_TAKEN", message: error.message ?? "Username already taken" });
+      }
+      throw err;
     }
-
-    const passwordHash = await hashPassword(parsed.data.password);
-    const now = new Date().toISOString();
-    const id = uuidv7();
-    const slug = parsed.data.username.toLowerCase().replace(/[^a-z0-9_-]/g, "-");
-
-    await db
-      .insertInto("persons")
-      .values({
-        id,
-        username: parsed.data.username,
-        passwordHash,
-        role: "VIEWER",
-        displayName: parsed.data.displayName ?? null,
-        slug,
-        isActive: true,
-        createdAt: now,
-        updatedAt: now,
-      })
-      .execute();
-
-    // Auto-login: create session
-    const sessionToken = await createSession(id);
-    reply.setCookie(SESSION_COOKIE_NAME, sessionToken, SESSION_COOKIE_OPTIONS);
-    const csrfToken = (reply as unknown as { setCsrfCookie: () => string }).setCsrfCookie();
-
-    const user = await db
-      .selectFrom("persons")
-      .select(["persons.id", "persons.username", "persons.role", "persons.displayName"])
-      .where("persons.id", "=", id)
-      .executeTakeFirst();
-
-    return reply.status(201).send({ user, csrfToken });
   });
 
   // GET /auth/oidc/status — public endpoint for login page to check if OIDC is enabled

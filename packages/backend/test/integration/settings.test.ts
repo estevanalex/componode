@@ -98,7 +98,7 @@ describe("settings CRUD", () => {
       passwordHash: "$argon2id$dummy",
       role: "VIEWER",
     });
-    const viewerSession = await createSessionInDb(testDb!.db, viewerId);
+    const { token: viewerSession } = await createSessionInDb(testDb!.db, viewerId);
 
     const res = await app.inject({
       method: "GET",

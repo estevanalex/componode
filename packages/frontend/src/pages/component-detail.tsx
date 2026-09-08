@@ -18,6 +18,7 @@ import { ErrorState } from "@/components/states/error-state";
 import { Forbidden } from "@/components/states/forbidden";
 import { StatusBadge } from "@/components/states/status-badge";
 import { EmptyState } from "@/components/states/empty-state";
+import { EntityHistory } from "@/components/entity-history";
 import { relativeTime, absoluteTime, MONO_CLASS } from "@/lib/format";
 import { safeUrl } from "@/components/safe-url";
 import { useSetCrumbLabel } from "@/components/layout/crumb-context";
@@ -179,7 +180,7 @@ export function ComponentDetailPage() {
               description="This component has no discovered instances."
             />
           ) : (
-            <Table>
+            <Table aria-label="Component instances">
               <TableHeader>
                 <TableRow>
                   <TableHead>Environment</TableHead>
@@ -220,6 +221,15 @@ export function ComponentDetailPage() {
               </TableBody>
             </Table>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">History</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <EntityHistory entityType="component" entityId={component.id} />
         </CardContent>
       </Card>
     </div>

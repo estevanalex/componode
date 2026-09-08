@@ -3,6 +3,7 @@ import { createUserSchema, updateUserSchema } from "@componode/core";
 import { createUser, listUsers, getUserById, updateUser } from "../services/user-service.js";
 import { requireRole } from "../plugins/rbac.js";
 import type { AuthenticatedRequest } from "../plugins/session.js";
+import { toActor } from "../services/actor.js";
 
 export async function userRoutes(app: FastifyInstance): Promise<void> {
   // GET /users — admin only
@@ -47,7 +48,7 @@ export async function userRoutes(app: FastifyInstance): Promise<void> {
   // POST /users — admin only
   app.post("/users", {
     preHandler: [app.verifySession, requireRole("user:create")],
-  }, async (req: FastifyRequest, reply: FastifyReply) => {
+  }, async (req: AuthenticatedRequest, reply: FastifyReply) => {
     const parsed = createUserSchema.safeParse(req.body);
     if (!parsed.success) {
       return reply.status(400).send({
@@ -58,7 +59,7 @@ export async function userRoutes(app: FastifyInstance): Promise<void> {
     }
 
     try {
-      const user = await createUser(parsed.data);
+      const user = await createUser(parsed.data, toActor(req));
       return reply.status(201).send({ user });
     } catch (err) {
       const error = err as { statusCode?: number; code?: string; message?: string };
@@ -75,7 +76,7 @@ export async function userRoutes(app: FastifyInstance): Promise<void> {
   // PATCH /users/:id — admin only
   app.patch("/users/:id", {
     preHandler: [app.verifySession, requireRole("user:update")],
-  }, async (req: FastifyRequest, reply: FastifyReply) => {
+  }, async (req: AuthenticatedRequest, reply: FastifyReply) => {
     const { id } = req.params as { id: string };
     const parsed = updateUserSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -86,7 +87,7 @@ export async function userRoutes(app: FastifyInstance): Promise<void> {
       });
     }
 
-    const user = await updateUser(id, parsed.data);
+    const user = await updateUser(id, parsed.data, toActor(req));
     if (!user) {
       return reply.status(404).send({ code: "NOT_FOUND", message: "User not found" });
     }

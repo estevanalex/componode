@@ -1,7 +1,15 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { render, cleanup, screen, fireEvent } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ProductDetailPage } from "@/pages/product-detail";
+
+vi.mock("@/api/hooks/audit", () => ({
+  useEntityHistory: vi.fn(() => ({ isPending: false, data: null, error: null, refetch: vi.fn() })),
+  useActivityFeed: vi.fn(() => ({ isPending: false, data: null, error: null, refetch: vi.fn() })),
+  useRunChanges: vi.fn(() => ({ isPending: false, data: null, error: null, refetch: vi.fn() })),
+  useCreateCorrection: vi.fn(() => ({ mutateAsync: vi.fn(), isPending: false })),
+}));
 
 vi.mock("@/api/hooks/auth", () => ({
   useSession: vi.fn(() => ({ data: { role: "EDITOR" } })),
@@ -64,13 +72,17 @@ const detail = {
   counts: { composedBy: 0, composes: 1, components: 1, instances: 0 },
 };
 
+const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
 const renderPage = () =>
   render(
-    <MemoryRouter initialEntries={["/products/payments"]}>
-      <Routes>
-        <Route path="/products/:slug" element={<ProductDetailPage />} />
-      </Routes>
-    </MemoryRouter>,
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={["/products/payments"]}>
+        <Routes>
+          <Route path="/products/:slug" element={<ProductDetailPage />} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 
 describe("ProductDetailPage", () => {

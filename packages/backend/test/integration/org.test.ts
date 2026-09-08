@@ -52,12 +52,12 @@ describe("org entity API (lobs + teams)", () => {
       username: "v1",
       role: "VIEWER",
     });
-    viewerSession = await createSessionInDb(testDb.db, viewerId);
+    viewerSession = (await createSessionInDb(testDb.db, viewerId)).token;
     const editorId = await createPersonInDb(testDb.db, {
       username: "e1",
       role: "EDITOR",
     });
-    editorSession = await createSessionInDb(testDb.db, editorId);
+    editorSession = (await createSessionInDb(testDb.db, editorId)).token;
   }, 120_000);
 
   afterAll(async () => {

@@ -11,6 +11,7 @@ import {
   Users,
   Settings,
   KeyRound,
+  Activity,
   PanelLeftClose,
   PanelLeftOpen,
 } from "lucide-react";
@@ -56,6 +57,7 @@ const SECTIONS: NavSection[] = [
     items: [
       { to: "/users", label: "Users", icon: Users },
       { to: "/sessions", label: "Sessions", icon: KeyRound },
+      { to: "/activity", label: "Activity", icon: Activity },
       { to: "/settings", label: "Settings", icon: Settings },
     ],
   },

@@ -10,28 +10,34 @@ export interface Actor {
   name: string | null;
 }
 
+export interface EntityChangeInput {
+  entityType: string;
+  entityId: string | null;
+  action: string;
+  changes: Record<string, unknown> | null;
+  importRunId?: string | null;
+  actor: Actor;
+}
+
 /**
- * Append-only audit writers (spec 005, FR-007). Always called inside the same
+ * Append-only audit writers (FR-007). Always called inside the same
  * transaction as the domain mutation so audit can never be lost.
  */
 export async function writeEntityChange(
-  entityType: string,
-  entityId: string,
-  action: string,
-  changes: Record<string, unknown> | null,
-  actor: Actor,
+  input: EntityChangeInput,
   trx: DbOrTrx = db,
 ) {
   await trx
     .insertInto("entity_changes")
     .values({
       id: uuidv7(),
-      entityType,
-      entityId,
-      action,
-      changes,
-      createdBy: actor.id,
-      createdByName: actor.name,
+      entityType: input.entityType,
+      entityId: input.entityId,
+      action: input.action,
+      changes: input.changes,
+      importRunId: input.importRunId ?? null,
+      createdBy: input.actor.id,
+      createdByName: input.actor.name,
       createdAt: new Date().toISOString(),
     })
     .execute();
@@ -62,4 +68,60 @@ export async function writeEdgeChange(
       createdAt: new Date().toISOString(),
     })
     .execute();
+}
+
+export async function writeAuthEvent(
+  action: "login" | "login_failed" | "logout" | "password_change" | "revoked" | "oidc_signin",
+  identity: string | null,
+  actor: Actor,
+  trx: DbOrTrx = db,
+) {
+  await writeEntityChange(
+    {
+      entityType: "auth",
+      entityId: null,
+      action,
+      changes: identity ? { identity } : null,
+      actor,
+    },
+    trx,
+  );
+}
+
+export async function writeCorrection(
+  entryId: string,
+  entryKind: "entity" | "edge",
+  note: string,
+  actor: Actor,
+  trx: DbOrTrx = db,
+) {
+  const change = {
+    corrects: entryId,
+    entryKind,
+    note,
+  };
+
+  if (entryKind === "edge") {
+    await writeEdgeChange(
+      "correction",
+      { entityType: "correction", entityId: entryId },
+      { entityType: "correction", entityId: entryId },
+      "added",
+      actor,
+      JSON.stringify(change),
+      trx,
+    );
+    return;
+  }
+
+  await writeEntityChange(
+    {
+      entityType: "correction",
+      entityId: null,
+      action: "correction",
+      changes: change,
+      actor,
+    },
+    trx,
+  );
 }

@@ -16,6 +16,7 @@ import { metrics } from "../plugins/metrics.js";
 import { traceDbQuery } from "../plugins/tracing.js";
 import type { Kysely } from "kysely";
 import type { DB } from "../db/types.js";
+import { writeEntityChange, type Actor } from "./audit-service.js";
 
 const maxConcurrency = parseInt(process.env.IMPORTER_MAX_CONCURRENCY ?? "3", 10);
 if (isNaN(maxConcurrency) || maxConcurrency < 1) {
@@ -24,6 +25,10 @@ if (isNaN(maxConcurrency) || maxConcurrency < 1) {
 
 const queue = new PQueue({ concurrency: maxConcurrency });
 const runningControllers = new Map<string, AbortController>();
+
+function runActor(importerName: string): Actor {
+  return { id: null, name: `importer:${importerName}` };
+}
 
 function createRunLogger(runId: string): Logger {
   const child = appLogger.child({ runId });
@@ -106,10 +111,12 @@ async function ensureUniqueInstanceSlug(
 async function processAsset(
   trx: Kysely<DB>,
   runId: string,
+  importerName: string,
   asset: DiscoveredAsset,
   triggeredBy: string | null,
 ): Promise<{ componentId: string; created: boolean; instancesOrphaned: number }> {
   const now = new Date().toISOString();
+  const actor = runActor(importerName);
 
   const component = await trx
     .selectFrom("components")
@@ -127,6 +134,7 @@ async function processAsset(
     componentId = component.id;
     componentSlug = component.slug;
     created = false;
+    const reactivating = component.lifecycle === "RETIRED";
     await trx
       .updateTable("components")
       .set({
@@ -140,6 +148,20 @@ async function processAsset(
       })
       .where("id", "=", componentId)
       .execute();
+
+    if (reactivating) {
+      await writeEntityChange(
+        {
+          entityType: "component",
+          entityId: componentId,
+          action: "lifecycle",
+          changes: { lifecycle: "ACTIVE", previousLifecycle: component.lifecycle },
+          importRunId: runId,
+          actor,
+        },
+        trx,
+      );
+    }
   } else {
     componentId = uuidv7();
     const baseSlug = asset.slug ?? generateComponentSlug(asset.name, asset.externalId);
@@ -165,6 +187,24 @@ async function processAsset(
       })
       .execute();
     created = true;
+
+    await writeEntityChange(
+      {
+        entityType: "component",
+        entityId: componentId,
+        action: "discovered",
+        changes: {
+          name: asset.name,
+          category: asset.category,
+          provider: asset.provider,
+          resourceType: asset.resourceType,
+          externalId: asset.externalId,
+        },
+        importRunId: runId,
+        actor,
+      },
+      trx,
+    );
   }
 
   for (const instance of asset.instances) {
@@ -173,7 +213,7 @@ async function processAsset(
 
     const existingInstance = await trx
       .selectFrom("component_instances")
-      .select("id")
+      .selectAll()
       .where("componentId", "=", componentId)
       .where("externalId", "=", instance.externalId)
       .executeTakeFirst();
@@ -193,16 +233,36 @@ async function processAsset(
     };
 
     if (existingInstance) {
+      const statusChanged = existingInstance.status !== (instance.status ?? "RUNNING");
       await trx
         .updateTable("component_instances")
         .set(instanceValues)
         .where("id", "=", existingInstance.id)
         .execute();
+
+      if (statusChanged) {
+        await writeEntityChange(
+          {
+            entityType: "component_instance",
+            entityId: existingInstance.id,
+            action: "status_change",
+            changes: {
+              previousStatus: existingInstance.status,
+              status: instance.status ?? "RUNNING",
+              environment: instance.environment,
+            },
+            importRunId: runId,
+            actor,
+          },
+          trx,
+        );
+      }
     } else {
+      const instanceId = uuidv7();
       await trx
         .insertInto("component_instances")
         .values({
-          id: uuidv7(),
+          id: instanceId,
           componentId,
           externalId: instance.externalId,
           ...instanceValues,
@@ -210,6 +270,22 @@ async function processAsset(
           createdAt: now,
         })
         .execute();
+
+      await writeEntityChange(
+        {
+          entityType: "component_instance",
+          entityId: instanceId,
+          action: "discovered",
+          changes: {
+            environment: instance.environment,
+            status: instance.status ?? "RUNNING",
+            componentId,
+          },
+          importRunId: runId,
+          actor,
+        },
+        trx,
+      );
     }
   }
 
@@ -227,6 +303,8 @@ async function processAsset(
 }
 
 async function reconcileRetiredComponents(
+  runId: string,
+  importerName: string,
   configId: string,
   yieldedComponentIds: Set<string>,
 ): Promise<number> {
@@ -235,37 +313,55 @@ async function reconcileRetiredComponents(
   }
 
   const now = new Date().toISOString();
-  const result = await db
-    .updateTable("components")
-    .set({ lifecycle: "RETIRED", updatedAt: now })
-    .where("lifecycle", "=", "ACTIVE")
-    .where(
-      "lastSeenInRunId",
-      "in",
-      (eb) => eb.selectFrom("import_runs").select("id").where("configId", "=", configId),
-    )
-    .where("id", "not in", Array.from(yieldedComponentIds))
-    .executeTakeFirst();
+  const actor = runActor(importerName);
 
-  await db
-    .updateTable("component_instances")
-    .set({ status: "GONE", updatedAt: now })
-    .where("status", "!=", "GONE")
-    .where("componentId", "in", (eb) =>
-      eb
-        .selectFrom("components")
-        .select("components.id")
-        .where("lifecycle", "=", "RETIRED")
-        .where(
-          "lastSeenInRunId",
-          "in",
-          (eb2) => eb2.selectFrom("import_runs").select("id").where("configId", "=", configId),
-        )
-        .where("id", "not in", Array.from(yieldedComponentIds)),
-    )
-    .execute();
+  return db.transaction().execute(async (trx) => {
+    const toRetire = await trx
+      .selectFrom("components")
+      .select(["id", "name", "slug"])
+      .where("lifecycle", "=", "ACTIVE")
+      .where(
+        "lastSeenInRunId",
+        "in",
+        (eb) => eb.selectFrom("import_runs").select("id").where("configId", "=", configId),
+      )
+      .where("id", "not in", Array.from(yieldedComponentIds))
+      .execute();
 
-  return Number(result.numUpdatedRows ?? 0);
+    if (toRetire.length === 0) {
+      return 0;
+    }
+
+    const ids = toRetire.map((c) => c.id);
+    await trx
+      .updateTable("components")
+      .set({ lifecycle: "RETIRED", updatedAt: now })
+      .where("id", "in", ids)
+      .execute();
+
+    await trx
+      .updateTable("component_instances")
+      .set({ status: "GONE", updatedAt: now })
+      .where("status", "!=", "GONE")
+      .where("componentId", "in", ids)
+      .execute();
+
+    for (const component of toRetire) {
+      await writeEntityChange(
+        {
+          entityType: "component",
+          entityId: component.id,
+          action: "retired",
+          changes: { lifecycle: "RETIRED", name: component.name, slug: component.slug },
+          importRunId: runId,
+          actor,
+        },
+        trx,
+      );
+    }
+
+    return toRetire.length;
+  });
 }
 
 async function worker(runId: string): Promise<void> {
@@ -314,6 +410,11 @@ async function worker(runId: string): Promise<void> {
     }
 
     importerName = config.importerName;
+    if (!importerName) {
+      throw Object.assign(new Error("Importer name missing from config"), {
+        code: "CONFIG_NOT_FOUND",
+      });
+    }
     startTime = Date.now();
 
     const now = new Date().toISOString();
@@ -361,7 +462,7 @@ async function worker(runId: string): Promise<void> {
       }
 
       const result = await traceDbQuery("processAsset", () =>
-        db.transaction().execute(async (trx) => processAsset(trx, runId, asset, run.triggeredBy)),
+        db.transaction().execute(async (trx) => processAsset(trx, runId, importerName!, asset, run.triggeredBy)),
       );
 
       yieldedComponentIds.add(result.componentId);
@@ -397,7 +498,7 @@ async function worker(runId: string): Promise<void> {
     }
 
     const now2 = new Date().toISOString();
-    componentsRetired = await reconcileRetiredComponents(config.id, yieldedComponentIds);
+    componentsRetired = await reconcileRetiredComponents(runId, importerName!, config.id, yieldedComponentIds);
 
     terminalStatus = "COMPLETED";
     await updateRun(runId, {

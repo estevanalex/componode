@@ -12,6 +12,7 @@ import {
   updateComponentGroup,
   deleteComponentGroup,
 } from "../services/component-group-service.js";
+import { toActor } from "../services/actor.js";
 
 export async function componentGroupRoutes(app: FastifyInstance): Promise<void> {
   app.get("/component-groups", {
@@ -45,7 +46,7 @@ export async function componentGroupRoutes(app: FastifyInstance): Promise<void> 
     }
 
     try {
-      const group = await createComponentGroup(parsed.data, req.user?.id ?? null);
+      const group = await createComponentGroup(parsed.data, toActor(req));
       return reply.status(201).send({ group });
     } catch (err) {
       const error = err as { statusCode?: number; code?: string; message?: string };
@@ -70,7 +71,7 @@ export async function componentGroupRoutes(app: FastifyInstance): Promise<void> 
     }
 
     try {
-      const group = await updateComponentGroup(id, parsed.data, req.user?.id ?? null);
+      const group = await updateComponentGroup(id, parsed.data, toActor(req));
       if (!group) {
         return reply.status(404).send({ code: "NOT_FOUND", message: "Component group not found" });
       }
@@ -86,9 +87,9 @@ export async function componentGroupRoutes(app: FastifyInstance): Promise<void> 
 
   app.delete("/component-groups/:id", {
     preHandler: [app.verifySession, requireRole("componentGroup:delete")],
-  }, async (req: FastifyRequest, reply: FastifyReply) => {
+  }, async (req: AuthenticatedRequest, reply: FastifyReply) => {
     const { id } = req.params as { id: string };
-    const group = await deleteComponentGroup(id);
+    const group = await deleteComponentGroup(id, toActor(req));
     if (!group) {
       return reply.status(404).send({ code: "NOT_FOUND", message: "Component group not found" });
     }

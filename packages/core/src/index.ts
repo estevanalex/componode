@@ -34,7 +34,7 @@ export type { ImportRun, ImportRunError } from "./contracts/import-run.js";
 export type { OidcConfig } from "./contracts/oidc-config.js";
 export type { AppSettings } from "./contracts/app-settings.js";
 export type { PasswordResetToken } from "./contracts/password-reset-token.js";
-export type { EntityChange, EdgeChange } from "./contracts/audit.js";
+export type { EntityChange, EdgeChange, ActivityFeedItem } from "./contracts/audit.js";
 export type { DiscoveredAsset, DiscoveredAssetInstance, DiscoveredAssetEnvironment } from "./contracts/discovered-asset.js";
 export type { Importer, ImporterContext, SecretResolver } from "./contracts/importer.js";
 
@@ -58,6 +58,11 @@ export {
   createImporterConfigSchema,
   updateImporterConfigSchema,
 } from "./schemas/importer-config.js";
+export {
+  activityFeedQuerySchema,
+  entityHistoryQuerySchema,
+  correctionInputSchema,
+} from "./schemas/audit.js";
 export {
   listComponentsQuerySchema,
   updateComponentGroupAssignmentSchema,
@@ -100,6 +105,11 @@ export type {
 } from "./schemas/auth.js";
 export type { CreateUserInput, UpdateUserInput } from "./schemas/user.js";
 export type { UpdateSettingsInput, UpdateOidcConfigInput } from "./schemas/settings.js";
+export type {
+  ActivityFeedQuery,
+  EntityHistoryQuery,
+  CorrectionInput,
+} from "./schemas/audit.js";
 export type {
   CreateImporterConfigInput,
   UpdateImporterConfigInput,

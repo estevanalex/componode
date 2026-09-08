@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from "vitest";
 import { startTestDb, type TestDb } from "../helpers/testcontainers.js";
-import { createPersonInDb, createSessionInDb, SESSION_COOKIE_NAME, csrfCookie, csrfHeader } from "../helpers/api.js";
+import { createPersonInDb, createSessionInDb, SESSION_COOKIE_NAME, csrfCookie, csrfHeader, truncateImportTables } from "../helpers/api.js";
 
 const ADMIN_USERNAME = "admin";
 const ADMIN_PASSWORD = "AdminPassword123!";
@@ -46,15 +46,11 @@ describe("component groups", () => {
       passwordHash: null,
       role: "VIEWER",
     });
-    viewerSession = await createSessionInDb(testDb.db as any, viewerId);
+    viewerSession = (await createSessionInDb(testDb.db as any, viewerId)).token;
   });
 
   beforeEach(async () => {
-    await testDb.db.deleteFrom("import_run_errors").execute();
-    await testDb.db.deleteFrom("import_runs").execute();
-    await testDb.db.deleteFrom("component_instances").execute();
-    await testDb.db.deleteFrom("components").execute();
-    await testDb.db.deleteFrom("component_groups").execute();
+    await truncateImportTables(testDb.db);
   });
 
   afterAll(async () => {
