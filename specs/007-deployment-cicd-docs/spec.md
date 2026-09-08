@@ -6,7 +6,7 @@
 
 **Status**: Draft
 
-**Input**: User description: "the next step" (inferred from constitution v1.0.1: Docker Compose packaging, CI/CD changesets, and generated docs)
+**Input**: User description: "the next step" (inferred from constitution v1.0.2: Docker Compose packaging, CI/CD changesets, and generated docs)
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -73,7 +73,7 @@ As a user or contributor, I want to browse an up-to-date documentation site gene
 - **FR-003**: The deployment package MUST persist application data across restarts and upgrades.
 - **FR-004**: The project MUST use a changeset-driven release process so that every release has a version bump and a human-readable changelog.
 - **FR-005**: The release process MUST be triggerable by a maintainer through a standard repository action.
-- **FR-006**: The release process MUST produce versioned release artifacts (e.g., a tagged container image and source archive).
+- **FR-006**: The release process MUST produce versioned release artifacts: a Git-tagged source archive and a tagged container image.
 - **FR-007**: The project MUST generate a documentation site from the existing Markdown guides and OpenAPI reference.
 - **FR-008**: The generated documentation site MUST update automatically when the source documentation changes.
 - **FR-009**: The deployment guide in the generated docs MUST match the actual deployment package.
@@ -91,7 +91,7 @@ As a user or contributor, I want to browse an up-to-date documentation site gene
 - **SC-001**: A new deployer can install and start Componode in under 15 minutes from a fresh server.
 - **SC-002**: A maintainer can cut a release by triggering one workflow and reviewing one pull request.
 - **SC-003**: Every release includes a changelog that accounts for all user-facing changes since the previous release.
-- **SC-004**: The generated docs site is reachable and stays within one generation cycle of `main`.
+- **SC-004**: The generated docs site is reachable at a stable URL and stays within one generation cycle of `main`.
 - **SC-005**: The deployment package passes a smoke test (application starts, user can log in, database is reachable) before a release is published.
 
 ## Assumptions

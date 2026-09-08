@@ -287,11 +287,13 @@ v1 is split into sequential spec-kit features:
    records.
 6. **`006-audit-settings`** ✅ — audit tables, activity feed, history,
    admin settings.
-7. **Next** — Docker Compose packaging, CI/CD changesets, generated docs —
-   numbered when specced.
+7. **`007-deployment-cicd-docs`** — Docker Compose packaging, CI/CD
+   changesets, generated docs. (In progress)
+8. **Next** — v1.1 features (Kubernetes/Helm packaging, E2E tests, additional
+   providers, RFC 7807 error wrapping).
 
-Dependencies: 001 → 002 → 003 → 004 → 005 → 006; later features build on the
-hierarchy and org-level entities (`Person`, `Team`, `LineOfBusiness`).
+Dependencies: 001 → 002 → 003 → 004 → 005 → 006 → 007; later features build on
+the hierarchy and org-level entities (`Person`, `Team`, `LineOfBusiness`).
 
 ## License
 

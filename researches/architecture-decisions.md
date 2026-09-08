@@ -196,7 +196,8 @@
 - 7 importers: GitHub, AWS, Azure, Kubernetes, Web URL, API URL, MCP server
 - Docker Compose deployment
 - Testing: shared importer harness + integration tests (testcontainers)
-- Docs: README + `docs/` (importer-development, data-model, deployment)
+- Docs: README + `docs/` (importer-development, data-model, deployment) +
+  generated docs site (feature `007-deployment-cicd-docs`)
 - CI/CD: GitHub Actions + changesets
 - Observability: Pino + Prometheus + OpenTelemetry
 
@@ -207,7 +208,6 @@
 - Per-env blast-radius traversal (Phase 4+)
 - Kubernetes/Helm packaging (community-contributed)
 - E2e tests (post-v1)
-- Generated docs site (post-v1)
 - Runtime-loaded importer plugins (post-v1)
 - Remaining providers (GitLab, Bitbucket, Azure DevOps, Alibaba Cloud,
   Cloudflare, OpenShift, Docker/Podman) = contributor-welcome issues

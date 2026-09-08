@@ -33,7 +33,7 @@
 **Purpose**: Refine the existing deployment artifacts so all user stories have a stable base.
 
 - [ ] T006 [P] Update `Dockerfile` to run the application as a non-root user, set least-privilege file permissions, and ensure `dist/server.js` is the entrypoint.
-- [ ] T007 [P] Update `docker-compose.yml` to reference `.env`, remove hardcoded secrets from the committed file, and add an `app` service dependency on the `postgres` `healthy` condition.
+- [ ] T007 [P] Update `docker-compose.yml` to reference `.env`, remove hardcoded secrets from the committed file, add an `app` service dependency on the `postgres` `healthy` condition, and ensure every required environment variable is listed in `.env.example`.
 - [ ] T008 Verify `init-db.sql` creates the `componode` database role and schema with least privilege and does not conflict with Docker Compose `POSTGRES_*` defaults.
 - [ ] T009 Create `docs/deployment.md` as the canonical human-readable deployment guide, covering `.env` setup, `docker compose up`, first login, and upgrade path.
 - [ ] T010 [P] Create `docs/release.md` documenting the changeset workflow, how to cut a release, and where release artifacts are published.
@@ -77,7 +77,7 @@
 
 ### Implementation for User Story 2
 
-- [ ] T019 [US2] Create `.github/workflows/release.yml` with two jobs: `version` (opens a release PR from `workflow_dispatch` with `bump` input) and `publish` (publishes a GitHub Release and tags a container image when a version tag is pushed).
+- [ ] T019 [US2] Create `.github/workflows/release.yml` with two jobs: `version` (opens a release PR from `workflow_dispatch` with `bump` input) and `publish` (publishes a GitHub Release, builds and tags a container image, and attaches the image to the release when a version tag is pushed).
 - [ ] T020 [US2] Add `.changeset/README.md` explaining how contributors add changesets.
 - [ ] T021 [US2] Update `package.json` version to `1.0.0` (or current baseline) and add a `CHANGELOG.md` with a v1.0.0 entry.
 - [ ] T022 [US2] Validate the release dry-run: it should FAIL before the workflow is configured and PASS after.
@@ -102,7 +102,7 @@
 - [ ] T025 [US3] Create `docs-site/.vitepress/config.ts` with a sidebar linking `docs/deployment.md`, `docs/api.md`, `docs/importer-development.md`, `docs/ux.md`, and a generated OpenAPI API reference page.
 - [ ] T026 [US3] Create `docs-site/index.md` as the landing page and a `docs-site/public/` directory for static assets.
 - [ ] T027 [US3] Configure VitePress to treat `docs/openapi.yaml` as a source and render it as an interactive API reference page in the docs site.
-- [ ] T028 [US3] Create `.github/workflows/docs.yml` that builds the docs site on every push to `main` and publishes it to GitHub Pages (or includes it in release artifacts if Pages is not enabled).
+- [ ] T028 [US3] Create `.github/workflows/docs.yml` that builds the docs site on every push to `main` and publishes it to GitHub Pages.
 - [ ] T029 [US3] Validate the docs build test: it should FAIL before the docs site is configured and PASS after.
 
 **Checkpoint**: User Story 3 is independently functional — the docs site builds and contains the required pages.

@@ -14,9 +14,9 @@ This feature finalizes the v1 delivery pipeline for Componode: a hardened Docker
 
 **Primary Dependencies**: pnpm 9+ (workspace monorepo), Turborepo, Docker, `@changesets/cli`, VitePress for docs site generation
 
-**Storage**: PostgreSQL in a Docker volume; release artifacts and docs site hosted by GitHub
+**Storage**: PostgreSQL in a Docker volume; release artifacts attached to GitHub Releases; docs site published to GitHub Pages
 
-**Testing**: Vitest (existing), Docker healthchecks, GitHub Actions workflow validation, manual deployment smoke test
+**Testing**: Vitest (existing), Docker healthchecks, GitHub Actions workflow validation, automated deployment smoke test, docs build verification
 
 **Target Platform**: Linux/AMD64 and Linux/ARM64 single-host Docker environments
 
@@ -30,7 +30,8 @@ This feature finalizes the v1 delivery pipeline for Componode: a hardened Docker
 **Constraints**:
 - Single-organization, self-hosted (Constitution I); no multi-tenant deployment patterns.
 - Secrets are supplied only via environment variables or a `.env` file, never committed.
-- v1 release artifacts are source archives and a tagged container image; no external registry is required.
+- v1 release artifacts are source archives and a tagged container image; the image is attached to the GitHub Release, and no external registry is required.
+- Every required environment variable in `docker-compose.yml` must be present in `.env.example` and documented in `docs/deployment.md`.
 
 **Scale/Scope**:
 - One deployment per organization.

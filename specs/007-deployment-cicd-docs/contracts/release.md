@@ -23,7 +23,7 @@ A maintainer runs the `release.yml` GitHub Actions workflow manually (`workflow_
 5. Once the release PR is merged, a second workflow or the same workflow on `push` to `main` with a version tag publishes:
    - A GitHub Release with the changelog.
    - A tagged source archive.
-   - A tagged container image built from `Dockerfile`.
+   - A tagged container image built from `Dockerfile`, attached to the GitHub Release as an artifact.
 
 ## Outputs
 
@@ -33,6 +33,7 @@ A maintainer runs the `release.yml` GitHub Actions workflow manually (`workflow_
 | `tag` | The Git tag, e.g., `v1.1.0`. |
 | `changelog` | The `CHANGELOG.md` section for this release. |
 | `releaseUrl` | The URL of the published GitHub Release. |
+| `artifacts` | The source archive and tagged container image; the image is attached to the GitHub Release. |
 
 ## Changeset Format
 
