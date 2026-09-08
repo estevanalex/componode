@@ -33,7 +33,7 @@
 
 ### Tests for Foundational
 
-- [ ] T003 [P] Create `packages/core/test/errors/problem.test.ts` with failing tests for Problem construction, `type` URI generation, and `invalid-params` shape.
+- [ ] T003 [P] Create `packages/core/test/errors/problem.test.ts` with failing tests for Problem construction, `type` URI generation, `invalid-params` shape, and that serializing a Problem document takes less than 1 ms.
 - [ ] T004 [P] Create `packages/core/test/errors/error-types.test.ts` with failing tests for the `ERROR_CODES` to `type`/`title`/`status` mapping.
 
 ### Implementation for Foundational
@@ -97,13 +97,13 @@
 
 ### Tests for User Story 3
 
-- [ ] T019 [US3] Create `packages/backend/test/contract/openapi-errors.test.ts` with failing tests that every error response in `docs/openapi.yaml` references the `Problem` schema.
+- [ ] T019 [US3] Create the `packages/backend/test/contract/` directory and `openapi-errors.test.ts` with failing tests that every error response in `docs/openapi.yaml` references the `Problem` schema.
 - [ ] T020 [US3] Create `packages/backend/test/contract/openapi-problem-schema.test.ts` with failing tests that the `Problem` schema includes `type`, `title`, `status`, `code`, `message`, `details`, and `invalid-params`.
 
 ### Implementation for User Story 3
 
 - [ ] T021 [US3] Update `docs/openapi.yaml` `Error` schema to RFC 7807 `Problem` schema with Componode extensions (depends on T005).
-- [ ] T022 [US3] Update `docs/openapi.yaml` response `description` and `content` blocks to reference the `Problem` schema for all error responses (depends on T021).
+- [ ] T022 [US3] Update `docs/openapi.yaml` `components/responses` and error response `content` blocks to reference the `Problem` schema for all documented error responses (depends on T021).
 - [ ] T023 [US3] Update `docs/api.md` error section to describe `application/problem+json`, the `Problem` fields, and the `type` URI convention (depends on T021).
 - [ ] T024 [US3] Run `pnpm docs:build` and `scripts/test-docs-site.sh` and verify the Problem schema renders (depends on T020, T023).
 
@@ -121,6 +121,7 @@
 - [ ] T028 [P] Run `pnpm test` and fix any regressions.
 - [ ] T029 Run the quickstart validation scenarios in `specs/008-rfc-7807-errors/quickstart.md`.
 - [ ] T030 Run `speckit-analyze` across `specs/008-rfc-7807-errors/spec.md`, `plan.md`, and `tasks.md`.
+- [ ] T031 Update `README.md` Roadmap section to mark `008-rfc-7807-errors` complete and revise the `Next` entry (depends on T024).
 
 ---
 
