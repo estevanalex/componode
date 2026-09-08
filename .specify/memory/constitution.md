@@ -178,7 +178,9 @@ The workflow is command-driven via spec-kit skills.
 
 ### v1 Feature Breakdown
 
-v1 is split into 6 spec-kit features with an explicit dependency graph:
+v1 is split into spec-kit features with an explicit dependency graph. The
+authoritative list is the `specs/` directory; this section is amended when that
+directory evolves:
 
 1. **`001-foundation`** — `packages/core` contracts + DB schema + migrations +
    backend skeleton (Fastify, Kysely, auth middleware, error handling, session
@@ -190,13 +192,18 @@ v1 is split into 6 spec-kit features with an explicit dependency graph:
 3. **`003-component-catalog`** — component/instance services + UI (listing,
    filtering, grouping via `ComponentGroup`), the 7 v1 importers. Milestone:
    "dashboard shows real components."
-4. **`004-product-hierarchy`** — products, edges, ownership, Platform Product
-   workflow, hierarchy UI. Milestone: "model my products." (Overlaps with 003
-   after 001+002.)
-5. **`005-audit-and-settings`** — audit tables, settings, admin UI.
-6. **`006-deployment-and-docs`** — Docker Compose, docs, CI, changesets.
+4. **`004-ux-shell`** — sidebar shell, state matrix, dark-mode theming,
+   health-and-attention dashboard, Ctrl+K global search. Milestone: "navigate
+   and theme the dashboard."
+5. **`005-product-hierarchy`** — products, edges, ownership, Platform Product
+   workflow, hierarchy UI. Milestone: "model my products."
+6. **`006-audit-settings`** — audit tables, activity feed, history, admin
+   settings. Milestone: "observe changes and configure the system."
 
-Dependencies: 001 first → 002 → 003 + 004 (overlap) → 005 + 006.
+Future work — Docker Compose packaging, CI/CD changesets, and generated docs —
+will be specced as a follow-up feature when `006` is complete.
+
+Dependencies: 001 → 002 → 003 → 004 → 005 → 006.
 
 ## Governance
 
@@ -206,6 +213,12 @@ compliance with the seven principles. Complexity must be justified against the
 principles (especially II, V, and VI). Use `researches/architecture-decisions.md`
 (the ADR index) and `researches/adrs/` (individual ADR files) for runtime
 development guidance and ADR history.
+
+### Amendments
+
+- **v1.0.1** (2026-09-08): v1 feature breakdown aligned with the `specs/`
+  directory and `README.md`; `004-ux-shell` and `006-audit-settings`
+  recognized, deployment/docs deferred to a future feature.
 
 ### v1.1 Roadmap (deferred from v1, queued for the next cycle)
 
@@ -221,4 +234,4 @@ development guidance and ADR history.
   Cloudflare, OpenShift, Docker/Podman) — contributor-welcome issues.
 - Importer-declared candidate product edges (v2: staged, human-confirmed).
 
-**Version**: 1.0.0 | **Ratified**: 2026-08-16 | **Last Amended**: 2026-08-16
+**Version**: 1.0.1 | **Ratified**: 2026-08-16 | **Last Amended**: 2026-09-08

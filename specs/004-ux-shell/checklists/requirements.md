@@ -35,7 +35,8 @@
   ratified by ADR-103; the spec records them rather than re-opening them, so
   no clarification markers were needed.
 - Intentional scope cut recorded in Assumptions: the products tree/detail UI
-  waits for the product-hierarchy backend feature. Spec 003's assumption text
-  predicted `004-product-hierarchy`; sequential numbering assigned 004 to this
-  feature instead — the product-hierarchy spec will take the next number.
+  waits for the product-hierarchy backend feature. Spec 003's original
+  assumption text predicted `004-product-hierarchy`; sequential numbering
+  assigned 004 to this feature instead and product hierarchy was later specced
+  as `005-product-hierarchy`.
 - Items marked incomplete require spec updates before `/speckit-clarify` or `/speckit-plan`.

@@ -1,11 +1,14 @@
 ### ADR-083 — v1 feature breakdown
 
-> **Status:** Ratified
+> **Status:** Ratified, amended by constitution v1.0.1 (2026-09-08)
 
 **Context**: The ADRs define architecture. Spec-kit needs feature descriptions.
 Is v1 one spec or many?
 
-**Decision**: **6 spec-kit features with foundation-first.**
+**Decision**: **6 spec-kit features with foundation-first.** The
+authoritative list is maintained in `.specify/memory/constitution.md`; this
+ADR records the ratified breakdown as amended by constitution v1.0.1.
+
 1. `001-foundation` — `core` contracts + DB schema + migrations + backend
    skeleton (Fastify, Kysely, auth, sessions, RBAC, bootstrap admin, local
    auth, OIDC). Milestone: "deploy, log in, see empty dashboard."
@@ -15,13 +18,18 @@ Is v1 one spec or many?
 3. `003-component-catalog` — component/instance services + UI (listing,
    filtering, `ComponentGroup` grouping), the 7 v1 importers. Milestone:
    "dashboard shows real components."
-4. `004-product-hierarchy` — products, edges, ownership, Platform Product
-   workflow, hierarchy UI. Milestone: "model my products." (Overlaps with 003
-   after 001+002.)
-5. `005-audit-and-settings` — audit tables, settings, admin UI.
-6. `006-deployment-and-docs` — Docker Compose, docs, CI, changesets.
+4. `004-ux-shell` — sidebar shell, state matrix, dark-mode theming,
+   health-and-attention dashboard, Ctrl+K global search. Milestone: "navigate
+   and theme the dashboard."
+5. `005-product-hierarchy` — products, edges, ownership, Platform Product
+   workflow, hierarchy UI. Milestone: "model my products."
+6. `006-audit-settings` — audit tables, activity feed, history, admin
+   settings. Milestone: "observe changes and configure the system."
 
-Dependencies: 001 first → 002 → 003 + 004 (overlap) → 005 + 006.
+Future work — Docker Compose packaging, CI/CD changesets, and generated docs —
+will be specced as a follow-up feature when `006` is complete.
+
+Dependencies: 001 → 002 → 003 → 004 → 005 → 006.
 
 **Rationale**: One giant spec is unmanageable (spec-kit's workflow isn't
 designed for specs that large). Horizontal layers deliver no user value

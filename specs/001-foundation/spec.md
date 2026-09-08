@@ -399,7 +399,7 @@ metrics are present.
 
 > **Note**: SC-010 and SC-011 are post-launch validation criteria measured
 > in a staging/Docker Compose environment, not automated test tasks in
-> 001-foundation. They are validated during the 006-deployment-and-docs
+> 001-foundation. They are validated during the deployment-and-docs
 > feature when the full Docker Compose stack is tested end-to-end.
 
 - **SC-012**: All frontend pages pass WCAG 2.1 Level AA verification —
@@ -424,7 +424,7 @@ metrics are present.
   not needed for the primary deployment.
 - The dashboard sections (Products, Components, Importers) are empty in
   this foundation spec — their content is populated by subsequent specs
-  (002-importer-framework, 003-component-catalog, 004-product-hierarchy).
+  (002-importer-framework, 003-component-catalog, 005-product-hierarchy).
 - The settings page in this foundation covers auth configuration (OIDC,
   self-registration toggle) and user management — other settings
   (importer-related, appearance) are added by subsequent specs.
