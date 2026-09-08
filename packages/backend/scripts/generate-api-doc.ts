@@ -60,7 +60,7 @@ interface Operation {
 
 export interface Spec {
   paths: Record<string, Record<string, Operation>>;
-  components: { schemas: { Error: { properties: { code: { enum: string[] } } } } };
+  components: { schemas: { Problem: { properties: { code: { enum: string[] } } } } };
 }
 
 export function loadSpec(path = OPENAPI_PATH): Spec {
@@ -97,7 +97,7 @@ export function renderEndpointTable(spec: Spec, tag: string): string {
 }
 
 export function renderErrorCodeTable(spec: Spec): string {
-  const codes: string[] = spec.components.schemas.Error.properties.code.enum;
+  const codes: string[] = spec.components.schemas.Problem.properties.code.enum;
   const rows = ["| Code | Meaning |", "|---|---|"];
   for (const code of codes) {
     const meaning = CODE_MEANINGS[code];
@@ -115,7 +115,9 @@ const MARKER_RE = /<!--\s*GENERATED:([A-Za-z0-9:-]+)\s*-->([\s\S]*?)<!--\s*\/GEN
 
 export function generateApiDoc(spec: Spec, current: string): string {
   const seen = new Set<string>();
-  const result = current.replace(MARKER_RE, (_m, key: string) => {
+  const eol = current.includes("\r\n") ? "\r\n" : "\n";
+  const normalized = current.replace(/\r\n/g, "\n");
+  const result = normalized.replace(MARKER_RE, (_m, key: string) => {
     seen.add(key);
     let body: string;
     if (key === "error-codes") {
@@ -140,7 +142,8 @@ export function generateApiDoc(spec: Spec, current: string): string {
   if (missing.length) {
     throw new Error(`docs/api.md is missing GENERATED markers for: ${missing.join(", ")}`);
   }
-  return result;
+
+  return eol === "\n" ? result : result.replace(/\n/g, eol);
 }
 
 export function run(check: boolean): void {
