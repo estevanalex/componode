@@ -199,11 +199,16 @@ directory evolves:
    workflow, hierarchy UI. Milestone: "model my products."
 6. **`006-audit-settings`** — audit tables, activity feed, history, admin
    settings. Milestone: "observe changes and configure the system."
+7. **`007-deployment-cicd-docs`** — Docker Compose packaging, CI/CD
+   changesets, and generated docs. Milestone: "install, release, and document
+   Componode."
 
-Future work — Docker Compose packaging, CI/CD changesets, and generated docs —
-will be specced as a follow-up feature when `006` is complete.
+Post-v1 work — Kubernetes/Helm packaging, runtime-loaded importer plugins,
+E2E tests, RFC 7807 error wrapping, range/OR filters, invite-based
+registration, per-env blast-radius traversal, and additional cloud providers
+— will be tracked in the v1.1 Roadmap below.
 
-Dependencies: 001 → 002 → 003 → 004 → 005 → 006.
+Dependencies: 001 → 002 → 003 → 004 → 005 → 006 → 007.
 
 ## Governance
 
@@ -219,6 +224,11 @@ development guidance and ADR history.
 - **v1.0.1** (2026-09-08): v1 feature breakdown aligned with the `specs/`
   directory and `README.md`; `004-ux-shell` and `006-audit-settings`
   recognized, deployment/docs deferred to a future feature.
+- **v1.0.2** (2026-09-08): `007-deployment-cicd-docs` added as the final v1
+  feature; "Generated docs site" removed from the v1.1 roadmap because it is
+  now part of `007`.
+- **v1.0.3** (2026-09-09): `007-deployment-cicd-docs` marked complete; v1
+  feature set is implemented and validated.
 
 ### v1.1 Roadmap (deferred from v1, queued for the next cycle)
 
@@ -229,9 +239,8 @@ development guidance and ADR history.
 - E2E tests (ADR-029).
 - Per-env blast-radius traversal (ADR-015, Phase 4+).
 - Kubernetes/Helm packaging (ADR-028, community-contributed).
-- Generated docs site (ADR-030, post-v1).
 - Remaining providers (GitLab, Bitbucket, Azure DevOps, Alibaba Cloud,
   Cloudflare, OpenShift, Docker/Podman) — contributor-welcome issues.
 - Importer-declared candidate product edges (v2: staged, human-confirmed).
 
-**Version**: 1.0.1 | **Ratified**: 2026-08-16 | **Last Amended**: 2026-09-08
+**Version**: 1.0.3 | **Ratified**: 2026-08-16 | **Last Amended**: 2026-09-09

@@ -1,13 +1,13 @@
 ### ADR-083 — v1 feature breakdown
 
-> **Status:** Ratified, amended by constitution v1.0.1 (2026-09-08)
+> **Status:** Ratified, amended by constitution v1.0.2 (2026-09-08)
 
 **Context**: The ADRs define architecture. Spec-kit needs feature descriptions.
 Is v1 one spec or many?
 
-**Decision**: **6 spec-kit features with foundation-first.** The
+**Decision**: **7 spec-kit features with foundation-first.** The
 authoritative list is maintained in `.specify/memory/constitution.md`; this
-ADR records the ratified breakdown as amended by constitution v1.0.1.
+ADR records the ratified breakdown as amended by constitution v1.0.2.
 
 1. `001-foundation` — `core` contracts + DB schema + migrations + backend
    skeleton (Fastify, Kysely, auth, sessions, RBAC, bootstrap admin, local
@@ -25,11 +25,10 @@ ADR records the ratified breakdown as amended by constitution v1.0.1.
    workflow, hierarchy UI. Milestone: "model my products."
 6. `006-audit-settings` — audit tables, activity feed, history, admin
    settings. Milestone: "observe changes and configure the system."
+7. `007-deployment-cicd-docs` — Docker Compose packaging, CI/CD changesets,
+   generated docs. Milestone: "install, release, and document Componode."
 
-Future work — Docker Compose packaging, CI/CD changesets, and generated docs —
-will be specced as a follow-up feature when `006` is complete.
-
-Dependencies: 001 → 002 → 003 → 004 → 005 → 006.
+Dependencies: 001 → 002 → 003 → 004 → 005 → 006 → 007.
 
 **Rationale**: One giant spec is unmanageable (spec-kit's workflow isn't
 designed for specs that large). Horizontal layers deliver no user value

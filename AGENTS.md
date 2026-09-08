@@ -1,6 +1,6 @@
 # AGENTS.md — Project Context for AI Coding Agents
 
-> **Last updated**: 2026-09-08 (added Windows shell notes for git/gh commands)
+> **Last updated**: 2026-09-09 (feature 007 deployment, CI/CD, and docs)
 > **Project**: Componode — open-source Digital Product Asset Management
 > **License**: Apache 2.0
 > **Repository**: https://github.com/estevanalex/componode
@@ -79,6 +79,7 @@ Constraints and the relevant ADRs.
 
 ```text
 .
+├── .changeset/                    # Changeset release notes
 ├── .devin/
 │   └── skills/                    # spec-kit skills (speckit-*)
 ├── .specify/                      # spec-kit infrastructure
@@ -100,14 +101,21 @@ Constraints and the relevant ADRs.
 │   └── adrs/                      # 103 individual ADR files
 ├── specs/                         # DYNAMIC — created per feature
 │   └── {NNN-feature-name}/        # spec.md, plan.md, tasks.md, ...
-├── docs/
+├── docs/                          # Source documentation
 │   ├── api.md                     # API reference (human-readable)
 │   ├── openapi.yaml               # API reference (OpenAPI 3.0)
+│   ├── openapi-reference.md       # Interactive OpenAPI reference source
 │   ├── importer-development.md    # Importer contributor contract
 │   ├── ux.md                      # Normative UX/UI reference
 │   ├── data-model.md              # Schema, entities, relationships
-│   └── deployment.md              # Docker Compose self-hosting
+│   ├── deployment.md              # Docker Compose self-hosting
+│   ├── release.md                 # Changeset release process
+│   └── index.md                   # Docs site landing page
+├── docs-site/                     # VitePress configuration and output
+│   └── .vitepress/                # VitePress theme and config
+├── scripts/                       # Deployment and validation scripts
 ├── docker-compose.yml
+├── CHANGELOG.md
 ├── AGENTS.md                      # This file
 └── README.md
 ```
@@ -178,8 +186,9 @@ constitution.
   See `ADR-095`.
 - Error responses must not leak stack traces, SQL, or internal paths. See
   `ADR-096`.
-- All API routes are authenticated except public auth routes and `/metrics`. See
-  `ADR-054`, `ADR-097`.
+- All API routes are authenticated except public auth routes, `/metrics`, and
+  `/api/v1/health` (unauthenticated so container health checks and smoke tests
+  can verify readiness without a session). See `ADR-054`, `ADR-097`.
 - Session IDs are cryptographically random, not UUID v7. See `ADR-099`.
 
 ### API & errors
@@ -276,7 +285,8 @@ artifact, the more specific document wins.
 | `specs/{NNN-feature-name}/plan.md` | Before `speckit-tasks` for that feature |
 | `specs/{NNN-feature-name}/tasks.md` | During `speckit-implement` |
 | `docs/importer-development.md` | When building or editing an importer |
-| `docs/api.md`, `docs/openapi.yaml` | When adding, changing, or removing any API endpoint (ADR-104) |
+| `docs/api.md`, `docs/openapi.yaml`, `docs/openapi-reference.md` | When adding, changing, or removing any API endpoint (ADR-104) |
 | `docs/ux.md` | Before writing or reviewing any frontend spec or UI code |
 | `docs/data-model.md` | When changing schema or entities |
 | `docs/deployment.md` | When changing Docker Compose or deployment |
+| `docs/release.md` | When changing the changeset or release process |
