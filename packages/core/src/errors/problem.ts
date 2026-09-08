@@ -24,14 +24,15 @@ export interface CreateProblemOptions {
   details?: unknown;
   invalidParams?: InvalidParam[];
   baseUrl?: string;
+  status?: number;
 }
 
 export function createProblem(code: ErrorCode, options: CreateProblemOptions = {}): Problem {
-  const { message, details, invalidParams, baseUrl = DEFAULT_TYPE_BASE } = options;
+  const { message, details, invalidParams, baseUrl = DEFAULT_TYPE_BASE, status: statusOverride } = options;
   const errorType = getErrorType(code);
 
   const title = errorType.title;
-  const status = errorType.status;
+  const status = statusOverride ?? errorType.status;
   const detail = message ?? errorType.title;
   const finalMessage = message ?? errorType.title;
 
