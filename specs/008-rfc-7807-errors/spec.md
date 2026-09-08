@@ -8,6 +8,16 @@
 
 **Input**: User description: "RFC 7807 error wrapping" (selected from the v1.1 roadmap; standardize API error responses to the RFC 7807 `problem+json` format while preserving Componode's existing machine-readable error codes).
 
+## Clarifications
+
+### Session 2026-09-08
+
+- **Q**: What base format should the RFC 7807 `type` URIs use? → **A**: Absolute `https` URIs under the project's canonical domain, using the path `/problems/{code}` (e.g., `https://componode.io/problems/AUTH_FORBIDDEN`). The exact base domain is configurable but defaults to the project’s canonical public domain.
+- **Q**: How should the API handle clients that request `Accept: application/json` instead of `application/problem+json`? → **A**: Always return `application/problem+json` for error responses, regardless of the `Accept` header. Clients that only accept `application/json` can still parse the JSON body.
+- **Q**: What exact shape should the `invalid-params` extension use for validation errors? → **A**: An array of `{ name, reason }` objects, one per invalid field (e.g., `[{ "name": "email", "reason": "Must be a valid email address" }]`).
+- **Q**: What `type` URI should the API use for generic 500 internal errors? → **A**: `https://componode.io/problems/INTERNAL_ERROR` with a generic `title` of "Internal server error" and a non-descriptive `detail` message. Stack traces and internal details only appear when an explicit debug mode is enabled.
+- **Q**: How should the existing test suite adapt to the new RFC 7807 error envelope? → **A**: Keep existing tests asserting `code`, `message`, and `details`; add new tests that assert the RFC 7807 `type`, `title`, `status`, and `invalid-params` fields.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Standard, Machine-Readable API Errors (Priority: P1)
@@ -56,23 +66,22 @@ As an API consumer reading the Componode documentation, I want the OpenAPI refer
 
 ### Edge Cases
 
-- What happens if a client sends `Accept: application/json` instead of `application/problem+json`?
-- How are validation errors with multiple fields represented in the RFC 7807 `invalid-params` extension?
-- What `type` URI is used for generic internal errors without leaking implementation details?
-- How does the system handle 500-class errors under RFC 7807 while still preventing stack-trace leakage?
-- What happens to the existing test suite that asserts the exact shape of the error envelope?
-- How are unknown routes (404 not found) represented as RFC 7807 problems?
+- A client that sends `Accept: application/json` still receives `Content-Type: application/problem+json`; the JSON body remains parseable by any JSON client.
+- Validation errors with multiple fields expose the `invalid-params` extension as an array of `{ name, reason }` objects.
+- 500-class errors return `type: https://componode.io/problems/INTERNAL_ERROR` with a generic `title` and `detail`; stack traces and internal paths are omitted unless an explicit debug mode is enabled.
+- The existing test suite continues to assert `code`, `message`, and `details`; new tests are added to assert the RFC 7807 `type`, `title`, `status`, and `invalid-params` fields.
+- Unknown routes and resource-not-found errors return `status: 404` and `type: https://componode.io/problems/NOT_FOUND`.
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
 - **FR-001**: The API MUST return all error responses using the RFC 7807 `application/problem+json` media type.
-- **FR-002**: Every problem document MUST contain a stable `type` URI that identifies the error category, plus `title`, `status`, and `detail` fields consistent with RFC 7807.
+- **FR-002**: Every problem document MUST contain a stable absolute `https` `type` URI under the project's canonical domain with the path `/problems/{code}`, plus `title`, `status`, and `detail` fields consistent with RFC 7807.
 - **FR-003**: The API MUST preserve the existing Componode `code`, `message`, and `details` fields inside the RFC 7807 document as extension members so existing clients remain compatible.
 - **FR-004**: The HTTP status code in the problem document's `status` field MUST match the actual HTTP response status code.
 - **FR-005**: The API MUST continue to omit stack traces, SQL, and internal paths from problem documents unless an explicit debug mode is enabled.
-- **FR-006**: Validation errors with multiple fields MUST be exposed through the standard RFC 7807 `invalid-params` extension using the field name and a human-readable message for each violation.
+- **FR-006**: Validation errors with multiple fields MUST be exposed through the `invalid-params` extension as an array of `{ name, reason }` objects, one per invalid field.
 - **FR-007**: Unknown routes and resource-not-found errors MUST be returned as RFC 7807 problems with `status: 404`.
 - **FR-008**: The OpenAPI reference MUST define a reusable `Problem` schema and update every error response to reference it.
 
@@ -95,6 +104,8 @@ As an API consumer reading the Componode documentation, I want the OpenAPI refer
 
 - The RFC 7807 migration is additive; the existing `{code, message, details?}` envelope values are preserved as extension members.
 - The frontend is the primary consumer in v1 and does not need to be rewritten to consume the new `type` or `title` fields immediately.
-- `type` URIs are stable and can be relative to the Componode API (e.g., `/problems/AUTH_FORBIDDEN`) or absolute URNs; they do not need to be resolvable web pages.
+- `type` URIs are stable absolute `https` URIs under the project’s canonical domain (e.g., `https://componode.io/problems/AUTH_FORBIDDEN`). The base domain is configurable; the URIs should be resolvable in the long term but do not need to return content in v1.
+- Error responses always use `Content-Type: application/problem+json` and do not negotiate based on the `Accept` header.
 - The existing controlled error code set remains the source of truth for the `code` extension.
 - No new error codes or HTTP status code semantics are introduced by this feature; only the response envelope format changes.
+- Existing tests are preserved; new tests are added for the RFC 7807 envelope fields.
