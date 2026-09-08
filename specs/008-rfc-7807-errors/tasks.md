@@ -39,7 +39,7 @@
 ### Implementation for Foundational
 
 - [ ] T005 [P] Create `packages/core/src/constants/error-types.ts` with the controlled `ErrorType` mapping for all `ERROR_CODES`.
-- [ ] T006 Implement `packages/core/src/errors/problem.ts` Problem builder and type-URI helper (depends on T005).
+- [ ] T006 Implement `packages/core/src/errors/problem.ts` Problem builder and type-URI helper that uses `PROBLEM_TYPE_BASE` or defaults to the canonical domain `https://componode.io` (depends on T005).
 - [ ] T007 Export `Problem` builder and `ErrorType` mapping from `packages/core/src/index.ts` (depends on T006).
 - [ ] T008 Run `pnpm --filter @componode/core test` and ensure foundational tests pass (depends on T003, T004, T007).
 
@@ -61,7 +61,7 @@
 ### Implementation for User Story 1
 
 - [ ] T011 [US1] Update `packages/backend/src/plugins/error-handler.ts` to construct and send RFC 7807 Problem documents for all handled error paths (depends on T006, T009).
-- [ ] T012 [US1] Update `packages/backend/src/app.ts` not-found handler to return a 404 Problem document (depends on T006, T010).
+- [ ] T012 [US1] Update the `setNotFoundHandler` in `packages/backend/src/plugins/error-handler.ts` to return a 404 Problem document (depends on T006, T010).
 - [ ] T013 [US1] Ensure `packages/backend/test/integration/health.test.ts` and other error-path tests still pass with the new problem envelope (depends on T011).
 - [ ] T014 [US1] Run `pnpm --filter @componode/backend test` and ensure all backend tests pass (depends on T009, T010, T013).
 
@@ -82,7 +82,7 @@
 
 ### Implementation for User Story 2
 
-- [ ] T017 [US2] Update `packages/frontend/src/lib/api.ts` to include `Accept: application/problem+json, application/json` and ensure error parsing uses `code`/`message` (depends on T011, T016).
+- [ ] T017 [US2] Verify `packages/frontend/src/api/client.ts` accepts `Content-Type: application/problem+json` responses and continues to expose `code`, `message`, and `details` as `ApiError` (depends on T011, T016).
 - [ ] T018 [US2] Run `pnpm --filter @componode/backend test` and `pnpm --filter @componode/frontend test` and verify no regressions (depends on T014, T015, T017).
 
 **Checkpoint**: User Story 1 and User Story 2 both work; the frontend and existing tests are unbroken.
