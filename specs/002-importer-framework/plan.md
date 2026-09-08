@@ -103,7 +103,7 @@ Implement the importer execution framework and the first concrete importer (`imp
 ### Out of scope
 - The remaining 6 v1 importers (AWS, Azure, Kubernetes, Web URL, API URL, MCP server) — deferred to `003-component-catalog`.
 - Component catalog browsing/filtering UI beyond what the importer produces — `003`.
-- Audit/entity_changes writes for each upsert — optional, can be added in `005-audit-and-settings`.
+- Audit/entity_changes writes for each upsert — optional, can be added in `006-audit-settings`.
 - Webhook/event-driven triggers — post-v1.
 - External secret stores (Vault, AWS SM) — env-only secret refs for `002`.
 

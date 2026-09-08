@@ -284,12 +284,14 @@ v1 is split into sequential spec-kit features:
    health-and-attention dashboard, Ctrl+K global search. (Complete)
 5. **`005-product-hierarchy`** ✅ — product tree UI, typed edges
    (COMPOSES/CONSUMES_FROM/DEPENDS_ON_COMPONENT), LOB/Team ownership, audit
-   records. (PR open)
-6. **Next** — audit & settings polish, Docker/CI packaging — numbered when
-   specced.
+   records.
+6. **`006-audit-settings`** ✅ — audit tables, activity feed, history,
+   admin settings.
+7. **Next** — Docker Compose packaging, CI/CD changesets, generated docs —
+   numbered when specced.
 
-Dependencies: 001 → 002 → 003 → 004 → 005; later features build on the
-hierarchy + org entities.
+Dependencies: 001 → 002 → 003 → 004 → 005 → 006; later features build on the
+hierarchy and org-level entities (`Person`, `Team`, `LineOfBusiness`).
 
 ## License
 

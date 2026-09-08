@@ -129,7 +129,7 @@ As an admin, I want to configure and run the remaining v1 importers so the catal
 
 - The GitHub importer and 002 generic framework are already complete and operational.
 - The component taxonomy with 24 `category` values and the `provider` `OTHER` escape hatch are already in place from 002.
-- Product hierarchy (`DigitalProduct`, edges, composition, platform promotion) is out of scope and will be addressed in `004-product-hierarchy`.
+- Product hierarchy (`DigitalProduct`, edges, composition, platform promotion) is out of scope and will be addressed in `005-product-hierarchy`.
 - Product-level edges (`COMPOSES`, `CONSUMES_FROM`, `OWNS`, `BELONGS_TO`) are out of scope.
 - Component-to-component provenance/dependency edges are a v2 feature; `003` importers must not yield them.
 - Importers run in the same Node.js process with in-process scheduling from 002.
