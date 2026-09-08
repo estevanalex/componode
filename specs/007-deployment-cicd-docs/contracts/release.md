@@ -12,13 +12,13 @@ A maintainer runs the `release.yml` GitHub Actions workflow manually (`workflow_
 
 | Input | Required | Description |
 |---|---|---|
-| `bump` | yes | Version bump type: `major`, `minor`, or `patch`. |
+| `bump` | yes | Version bump type: `major`, `minor`, or `patch`. Used as a fallback when no unreleased changesets exist; if changesets exist, their bump levels take precedence and this input is ignored. |
 
 ## Process
 
 1. The workflow checks out `main`.
 2. It runs `pnpm install`, `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build`.
-3. If all checks pass, it runs `changeset version` with the requested bump, consuming all `.changeset/*.md` files.
+3. If all checks pass, it consumes all `.changeset/*.md` files. If no unreleased changesets exist, it creates a release-bump changeset using the `bump` input, then runs `changeset version`.
 4. It opens a release pull request containing the version bump and `CHANGELOG.md` update.
 5. Once the release PR is merged, a second workflow or the same workflow on `push` to `main` with a version tag publishes:
    - A GitHub Release with the changelog.
@@ -59,6 +59,6 @@ Add a short, human-readable description of the change.
 
 ## Error Scenarios
 
-- Missing changesets: the workflow fails with a clear message and no version is bumped.
+- Missing changesets and no `bump` input: the workflow fails with a clear message and no version is bumped.
 - CI checks fail: the release PR is opened but marked as failing; it cannot be merged without override.
 - Container build fails: the release is not published until the build is fixed and the workflow is re-run.

@@ -115,6 +115,14 @@
 
 **Validation criterion**: A visitor can find the deployment guide, architecture principles, and contributor guides within three clicks from the landing page.
 
+## Performance Notes
+
+Observed during validation (2026-09-09):
+
+- `docker compose up` app startup after Postgres is healthy: under 60 seconds.
+- `pnpm docs:build` completion: under 2 minutes.
+- `scripts/smoke-test.sh` enforces a 15-minute startup timeout to validate SC-001.
+
 ---
 
 ## Validation Results

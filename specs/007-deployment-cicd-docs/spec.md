@@ -4,7 +4,7 @@
 
 **Created**: 2026-09-08
 
-**Status**: Draft
+**Status**: Ratified
 
 **Input**: User description: "the next step" (inferred from constitution v1.0.2: Docker Compose packaging, CI/CD changesets, and generated docs)
 
@@ -60,7 +60,7 @@ As a user or contributor, I want to browse an up-to-date documentation site gene
 
 - What happens if the deployer's host does not have Docker Compose available?
 - How does the system handle a failed migration during a deployment upgrade?
-- What happens if a changeset is missing for a user-facing change?
+- What happens if a changeset is missing for a user-facing change? (The release workflow can fall back to the maintainer-supplied `bump` input to create a release-bump changeset; if no `bump` is supplied, it fails.)
 - What happens if the release workflow runs while a feature branch is still open?
 - How are secrets (database credentials, OIDC client secrets) supplied without appearing in the repository?
 
@@ -88,10 +88,10 @@ As a user or contributor, I want to browse an up-to-date documentation site gene
 
 ### Measurable Outcomes
 
-- **SC-001**: A new deployer can install and start Componode in under 15 minutes from a fresh server.
+- **SC-001**: A new deployer can install and start Componode in under 15 minutes from a fresh server. The smoke test enforces a 15-minute startup timeout.
 - **SC-002**: A maintainer can cut a release by triggering one workflow and reviewing one pull request.
 - **SC-003**: Every release includes a changelog that accounts for all user-facing changes since the previous release.
-- **SC-004**: The generated docs site is reachable at a stable URL and stays within one generation cycle of `main`.
+- **SC-004**: The generated docs site is reachable at a stable URL and is regenerated on every push to `main` (one generation cycle = one push-to-main build).
 - **SC-005**: The deployment package passes a smoke test (application starts, user can log in, database is reachable) before a release is published.
 
 ## Assumptions

@@ -18,7 +18,7 @@ git clone --depth 1 "file://$REPO_ROOT" "$TEMP_DIR/componode" >/dev/null 2>&1
 cd "$TEMP_DIR/componode"
 
 # Use the same pnpm store for speed.
-COREPACK_ENABLE_AUTO_PIN=0
+export COREPACK_ENABLE_AUTO_PIN=0
 
 # Add a test changeset.
 mkdir -p .changeset

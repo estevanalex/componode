@@ -85,3 +85,11 @@ values are read from the environment at runtime.
   If it fails, check `docker compose logs postgres`.
 - **Missing secret**: the application logs a clear error and exits before
   accepting traffic.
+- **No Docker Compose installed**: install Docker Compose v2; the deployment
+  requires a single-host Docker environment.
+- **Failed migration during upgrade**: the `app` container exits on a migration
+  error and logs the failing migration. Fix the issue, then run
+  `docker compose up -d` again; the database volume preserves data.
+- **No Docker/WSL on Windows**: the smoke test is a Bash script; run it in
+  Git Bash, WSL, or an equivalent Unix-like environment, or invoke the
+  equivalent PowerShell steps from `scripts/smoke-test.sh` manually.

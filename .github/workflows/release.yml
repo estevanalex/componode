@@ -58,10 +58,13 @@ jobs:
       - name: Build
         run: pnpm build
 
-      - name: Verify changesets exist or add release bump
+      - name: Verify changesets exist or add release-bump fallback
         run: |
           set -e
-          if ! ls .changeset/*.md >/dev/null 2>&1; then
+          if ls .changeset/*.md >/dev/null 2>&1; then
+            echo "Unreleased changesets found; using their bump levels."
+          else
+            echo "No unreleased changesets found; creating release-bump changeset with bump '${{ github.event.inputs.bump }}'."
             cat > ".changeset/release-bump.md" <<EOF
           ---
           "componode": ${{ github.event.inputs.bump }}

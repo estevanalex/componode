@@ -30,13 +30,13 @@ This feature finalizes the v1 delivery pipeline for Componode: a hardened Docker
 **Constraints**:
 - Single-organization, self-hosted (Constitution I); no multi-tenant deployment patterns.
 - Secrets are supplied only via environment variables or a `.env` file, never committed.
-- v1 release artifacts are source archives and a tagged container image; the image is attached to the GitHub Release, and no external registry is required.
+- v1 release artifacts are source archives and a tagged container image. A tarball is attached to the GitHub Release; the image is also published to GHCR for convenience, but the tarball remains the required artifact.
 - Every required environment variable in `docker-compose.yml` must be present in `.env.example` and documented in `docs/deployment.md`.
 
 **Scale/Scope**:
 - One deployment per organization.
 - One release at a time, with human review.
-- Docs site published per release.
+- Docs site published on every push to `main` and as part of each release.
 
 ## Constitution Check
 
@@ -79,24 +79,29 @@ specs/007-deployment-cicd-docs/
 │       ├── release.yml      # version bump, changelog, release
 │       └── docs.yml         # build and publish docs site
 ├── docker-compose.yml       # refined v1 deployment package
-├── Dockerfile               # multi-stage build (already exists; hardened)
-├── docs/                    # existing markdown guides
+├── Dockerfile               # hardened container build (multi-stage collapsed to single build + runtime stage)
+├── docs/                    # source markdown guides
 │   ├── api.md
 │   ├── deployment.md        # new: human-readable deployment guide
+│   ├── index.md             # docs site landing page
 │   ├── importer-development.md
+│   ├── openapi-reference.md # new: interactive OpenAPI reference source
 │   ├── openapi.yaml
+│   ├── release.md           # new: changeset release process
 │   └── ux.md
-├── docs-site/               # VitePress config and generated site
+├── docs-site/               # VitePress configuration
 │   ├── .vitepress/
 │   │   ├── config.ts
 │   │   └── theme/
-│   ├── index.md
-│   └── public/
+│   └── public/              # static assets (optional)
+├── scripts/                 # smoke-test, release dry-run, docs build test
+├── CHANGELOG.md             # release history
 ├── README.md                # updated deployment and release sections
-└── package.json             # version managed by changesets
+├── package.json             # version managed by changesets
+└── pnpm-workspace.yaml      # includes root package for changesets
 ```
 
-**Structure Decision**: Add deployment, CI/CD, and docs automation as repository-level artifacts. The docs site lives in a top-level `docs-site/` directory so it does not mix generated output with the source `docs/` folder. The `docs/deployment.md` guide is the canonical human-readable source and the generated docs site mirrors it.
+**Structure Decision**: Add deployment, CI/CD, and docs automation as repository-level artifacts. VitePress is configured in `docs-site/.vitepress/` with `srcDir: '../docs'` so the source docs remain in `docs/` and the generated site is emitted to `docs-site/.vitepress/dist/`. The `docs/deployment.md` guide is the canonical human-readable source and the generated docs site mirrors it.
 
 ## Complexity Tracking
 

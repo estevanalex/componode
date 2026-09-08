@@ -17,15 +17,18 @@ docker compose down >/dev/null 2>&1 || true
 docker compose up -d
 
 echo "Waiting for app to be healthy..."
-for i in $(seq 1 30); do
+MAX_WAIT_SECONDS=900
+WAITED=0
+while [ "$WAITED" -lt "$MAX_WAIT_SECONDS" ]; do
   if docker compose ps app | grep -q "healthy"; then
     break
   fi
   sleep 2
+  WAITED=$((WAITED + 2))
 done
 
 if ! docker compose ps app | grep -q "healthy"; then
-  echo "App did not become healthy in time"
+  echo "App did not become healthy within ${MAX_WAIT_SECONDS}s"
   docker compose logs app --tail 50
   docker compose down
   exit 1

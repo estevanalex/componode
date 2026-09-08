@@ -72,7 +72,7 @@
 
 ### Tests for User Story 2
 
-- [x] T017 [P] [US2] Create `.changeset/config.json` with `mainBranch: main`, `changelogFilename: CHANGELOG.md`, and `access: public` for the root package.
+- [x] T017 [P] [US2] Create `.changeset/config.json` with `baseBranch: main`, `access: public`, and a standard `changelog` setting for the root package.
 - [x] T018 [P] [US2] Create `scripts/release-dry-run.sh` that runs `pnpm changeset version` in a clean temp clone and verifies `package.json` and `CHANGELOG.md` are updated correctly.
 
 ### Implementation for User Story 2
@@ -100,7 +100,7 @@
 ### Implementation for User Story 3
 
 - [x] T025 [US3] Create `docs-site/.vitepress/config.ts` with a sidebar linking `docs/deployment.md`, `docs/api.md`, `docs/importer-development.md`, `docs/ux.md`, and a generated OpenAPI API reference page.
-- [x] T026 [US3] Create `docs-site/index.md` as the landing page and a `docs-site/public/` directory for static assets.
+- [x] T026 [US3] Create the docs site landing page in `docs/index.md` and keep VitePress configuration in `docs-site/.vitepress/` with `srcDir: '../docs'`. Create `docs-site/public/` only if static assets are needed.
 - [x] T027 [US3] Configure VitePress to treat `docs/openapi.yaml` as a source and render it as an interactive API reference page in the docs site.
 - [x] T028 [US3] Create `.github/workflows/docs.yml` that builds the docs site on every push to `main` and publishes it to GitHub Pages.
 - [x] T029 [US3] Validate the docs build test: it should FAIL before the docs site is configured and PASS after.
@@ -118,6 +118,8 @@
 - [x] T032 Run all quickstart validation scenarios from `quickstart.md` and document results.
 - [x] T033 [P] Run `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build` across the monorepo and fix any regressions introduced by the new root scripts or dependencies.
 - [x] T034 Verify that `AGENTS.md` and `.specify/memory/constitution.md` still accurately describe the v1 feature breakdown and roadmap after this feature is added.
+- [x] T035 [P] Add a 15-minute startup timeout to `scripts/smoke-test.sh` and record observed build/deploy/docs timing in `quickstart.md` to validate performance goals.
+- [x] T036 [P] Document the remaining edge cases (no Docker Compose, failed migration, open feature branch during release, secret handling) in `docs/deployment.md` or `docs/release.md`.
 
 ---
 
