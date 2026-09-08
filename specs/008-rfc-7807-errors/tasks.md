@@ -167,7 +167,7 @@ Task T010: "packages/backend/test/unit/not-found-handler.test.ts"
 
 # Launch US1 implementation once tests fail:
 Task T011: "packages/backend/src/plugins/error-handler.ts"
-Task T012: "packages/backend/src/app.ts not-found handler"
+Task T012: "packages/backend/src/plugins/error-handler.ts setNotFoundHandler"
 ```
 
 ---
