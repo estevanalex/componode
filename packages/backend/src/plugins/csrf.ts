@@ -34,4 +34,17 @@ export async function csrfPlugin(app: FastifyInstance): Promise<void> {
       });
     }
   });
+
+  // Issue a CSRF cookie on safe requests that don't already have one, so the
+  // frontend has a token before its first state-changing request (e.g. login).
+  app.addHook("onSend", async (req: FastifyRequest, reply: FastifyReply, payload: unknown) => {
+    if (
+      (req.method === "GET" || req.method === "HEAD") &&
+      !req.cookies?.[CSRF_COOKIE_NAME] &&
+      typeof (reply as unknown as { setCsrfCookie?: () => string }).setCsrfCookie === "function"
+    ) {
+      (reply as unknown as { setCsrfCookie: () => string }).setCsrfCookie();
+    }
+    return payload;
+  });
 }

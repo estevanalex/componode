@@ -3,6 +3,8 @@ import { startTestDb, type TestDb } from "../helpers/testcontainers.js";
 import {
   csrfCookie,
   csrfHeader,
+  getCookie,
+  CSRF_COOKIE_NAME,
   loginAs,
   SESSION_COOKIE_NAME,
 } from "../helpers/api.js";
@@ -109,5 +111,26 @@ describe("CSRF protection", () => {
 
     expect(res.statusCode).toBe(403);
     expect(res.json().code).toBe("CSRF_TOKEN_MISMATCH");
+  });
+
+  it("a safe GET without a CSRF cookie sets one for the first state-changing request", async () => {
+    const getRes = await app.inject({
+      method: "GET",
+      url: "/api/v1/health",
+    });
+
+    expect(getRes.statusCode).toBe(200);
+    const csrfToken = getCookie(getRes, CSRF_COOKIE_NAME);
+    expect(csrfToken).toBeTruthy();
+
+    const postRes = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/login",
+      cookies: { [CSRF_COOKIE_NAME]: csrfToken! },
+      headers: { "x-csrf-token": csrfToken! },
+      payload: { username: ADMIN_USERNAME, password: ADMIN_PASSWORD },
+    });
+
+    expect(postRes.statusCode).toBe(200);
   });
 });

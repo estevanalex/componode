@@ -17,3 +17,15 @@ deployment type). GET routes MUST NOT have side effects ([ADR-094](./ADR-094-get
 store). Layered with `SameSite: Lax` ([ADR-086](./ADR-086-session-cookie-security-flags.md)). Universal because the
 complexity is the same either way, and a public-facing deployment
 ([ADR-075](./ADR-075-self-registration.md)) is a real CSRF target.
+
+## Amendment 1 — Initial cookie issuance (2026-09-09)
+
+**Context**: The frontend needs a CSRF token before its *first* state-changing
+request. The original implementation only set the cookie in successful
+login/register responses, which created a deadlock: the first login could not
+succeed because the browser had no token yet.
+
+**Refinement**: The backend MUST issue a fresh `componode_csrf` cookie on the
+first safe `GET`/`HEAD` response when the request does not already have one.
+This gives the frontend a token before any login attempt without changing the
+double-submit verification on `POST`/`PUT`/`PATCH`/`DELETE`.

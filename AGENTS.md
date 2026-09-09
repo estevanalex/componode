@@ -250,6 +250,30 @@ or an unrelated branch.
 **Roadmap** section in `README.md` — mark the feature `NNN-name` complete and
 revise the `Next` entry so the roadmap always reflects the current state.
 
+## Bugfix Spec Workflow
+
+Bugfixes are a lightweight variant of the feature spec workflow. They still live
+under `specs/` and still require a regression test, but the scope is the
+bug itself rather than new product functionality.
+
+Required sequence for a bugfix:
+
+1. `speckit-specify` (or manual creation) — produce
+   `specs/{NNN}-bugfix-{short-name}/spec.md` with the problem, root cause,
+   impacted user scenarios, and acceptance criteria.
+2. `speckit-plan` — produce `specs/{NNN}-bugfix-{short-name}/plan.md` and any
+   required `tasks.md`.
+3. Regression test first — add a failing test that reproduces the bug.
+4. Implement the minimal fix.
+5. Update affected ADRs (Amendment section) or add a new ADR if the fix
+   introduces/extends an architecture decision.
+6. `speckit-analyze` / `speckit-converge` — before merge.
+
+Branch naming for bugfixes: `bugfix/{NNN}-{short-name}` (or the feature branch
+if the fix belongs to an in-flight feature). Never commit a bugfix to `main`
+without a spec, a regression test, and an updated ADR where the fix touches an
+architecture decision.
+
 ---
 
 ## What AGENTS.md Is
