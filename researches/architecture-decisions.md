@@ -153,6 +153,12 @@
 | [ADR-103](./adrs/ADR-103-ux-ui-reference-adoption.md) | UX/UI reference adoption (`docs/ux.md` normative) |
 | [ADR-104](./adrs/ADR-104-api-documentation-sync.md) | API documentation sync (`docs/openapi.yaml` + `docs/api.md` normative) |
 
+### Frontend & SPA
+
+| ADR | Title |
+|---|---|
+| [ADR-105](./adrs/ADR-105-spa-fallback-for-direct-navigation.md) | SPA fallback for direct navigation |
+
 ---
 
 ## Relationship Type Set (v1)
