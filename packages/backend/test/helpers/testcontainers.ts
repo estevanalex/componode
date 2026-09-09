@@ -56,6 +56,25 @@ export async function startTestDb(): Promise<TestDb> {
 
   const cleanup = async () => {
     await db.destroy();
+
+    // Close the app-level connection pool (imported lazily so this helper can be
+    // used by tests that never build a Fastify app) before stopping the
+    // container; otherwise the pool's open sockets keep the worker process alive
+    // or emit late errors when Postgres terminates them.
+    try {
+      const { closeDb } = await import("../../src/db/connection.js");
+      await closeDb();
+    } catch {
+      // connection.js was not loaded or DATABASE_URL was not set.
+    }
+
+    try {
+      const { stopScheduler } = await import("../../src/services/scheduler-service.js");
+      stopScheduler();
+    } catch {
+      // scheduler-service.js was not loaded or DATABASE_URL was not set.
+    }
+
     await container.stop();
   };
 
