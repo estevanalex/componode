@@ -61,9 +61,10 @@
 
 **Purpose**: Prepare the fix for review.
 
-- [ ] T013 Commit the changes to branch `bugfix/009-spa-csrf`.
-- [ ] T014 Push `bugfix/009-spa-csrf` to `origin`.
-- [ ] T015 (Optional) Open a PR; the old `fix/spa-csrf-initial-load` branch can be deleted.
+- [x] T013 Commit the changes to branch `bugfix/009-spa-csrf`.
+- [x] T014 Push `bugfix/009-spa-csrf` to `origin`.
+- [x] T015 Delete the old `fix/spa-csrf-initial-load` branch from `origin` and local checkout.
+- [ ] T016 (Optional) Open a PR for `bugfix/009-spa-csrf`.
 
 ---
 
