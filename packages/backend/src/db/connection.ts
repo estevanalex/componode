@@ -43,14 +43,29 @@ export const pool = new Pool({
   ...sslConfig,
 });
 
-// Update pool gauges periodically
-setInterval(() => {
+// Update pool gauges periodically. unref() so the interval alone cannot keep a
+// test worker process alive after the app has been closed.
+const poolMetricsInterval = setInterval(() => {
   metrics.dbPoolSize.set(maxConnections);
   metrics.dbPoolAvailable.set(pool.idleCount);
 }, 5000);
+poolMetricsInterval.unref();
 
 export const db = new Kysely<DB>({
   dialect: new PostgresDialect({ pool }),
 });
+
+let dbClosed = false;
+
+/**
+ * Destroy the global pool and stop the metrics interval. The production server
+ * never calls this; tests use it so worker processes can exit cleanly.
+ */
+export async function closeDb(): Promise<void> {
+  if (dbClosed) return;
+  dbClosed = true;
+  clearInterval(poolMetricsInterval);
+  await db.destroy();
+}
 
 export type { DB } from "./types.js";
