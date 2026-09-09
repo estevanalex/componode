@@ -19,6 +19,10 @@ export { IMPORT_RUN_STATUS, IMPORT_RUN_STATUS_META } from "./constants/import-ru
 export type { ImportRunStatus } from "./constants/import-run-status.js";
 export { ERROR_CODES } from "./constants/error-codes.js";
 export type { ErrorCode } from "./constants/error-codes.js";
+export { ERROR_TYPES, getErrorType, isErrorCode } from "./constants/error-types.js";
+export type { ErrorType } from "./constants/error-types.js";
+export { createProblem, buildProblemTypeUri } from "./errors/problem.js";
+export type { Problem, CreateProblemOptions, InvalidParam } from "./errors/problem.js";
 
 // Contracts
 export type { Person } from "./contracts/person.js";

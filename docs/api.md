@@ -20,9 +20,13 @@ exception is `GET /metrics`, which is served at the root.
   permission enforced by the `requireRole` plugin (declared as `x-permission`
   in the OpenAPI spec); "Authenticated" means any valid session, "Public" means
   no session required.
-- **Errors**: all errors use the envelope
-  `{ "code": "<CODE>", "message": "...", "details": <optional> }`.
-  Codes are a controlled enum (`ERROR_CODES` in `packages/core`).
+- **Errors**: all errors are returned as
+  [RFC 7807 Problem Details](https://tools.ietf.org/html/rfc7807) documents
+  with `Content-Type: application/problem+json`. The standard fields `type`,
+  `title`, `status`, and `detail` are always present, and the legacy
+  Componode fields `code`, `message`, and `details` are preserved for
+  backward compatibility. Validation failures also include an `invalid-params`
+  array. Codes are a controlled enum (`ERROR_CODES` in `packages/core`).
 - **Identifiers**: entity IDs are UUID v7; human-readable refs use `slug`.
 - **Listing rules**: list queries exclude `RETIRED` records and `GONE`
   instances unless explicitly requested (`includeRetired`, `includeGone`).

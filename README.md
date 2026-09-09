@@ -304,8 +304,12 @@ v1 is split into sequential spec-kit features:
    admin settings.
 7. **`007-deployment-cicd-docs`** ✅ — Docker Compose packaging, CI/CD
    changesets, generated docs. (Complete)
-8. **Next** — v1.1 features (Kubernetes/Helm packaging, E2E tests, additional
-   providers, RFC 7807 error wrapping).
+8. **`008-rfc-7807-errors`** ✅ — RFC 7807 Problem Details for all API
+   errors, `application/problem+json` responses, backward-compatible
+   `code`/`message`/`details`, `invalid-params` for validation, OpenAPI and
+   docs updates. (Complete)
+9. **Next** — v1.1 features (Kubernetes/Helm packaging, E2E tests, additional
+   importers).
 
 Dependencies: 001 → 002 → 003 → 004 → 005 → 006 → 007; later features build on
 the hierarchy and org-level entities (`Person`, `Team`, `LineOfBusiness`).

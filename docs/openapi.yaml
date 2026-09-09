@@ -88,8 +88,8 @@ paths:
         '401':
           description: Invalid credentials
           content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
   /auth/logout:
     post:
       tags: [Auth]
@@ -140,8 +140,8 @@ paths:
         '409':
           description: Username already taken (`AUTH_USERNAME_TAKEN`)
           content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
   /auth/session:
     get:
       tags: [Auth]
@@ -221,8 +221,8 @@ paths:
         '400':
           description: Validation failed or invalid/expired/used token
           content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
   /auth/oidc/status:
     get:
       tags: [Auth]
@@ -252,8 +252,8 @@ paths:
         '503':
           description: OIDC not configured (`OIDC_NOT_CONFIGURED`)
           content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
   /auth/oidc/callback:
     get:
       tags: [Auth]
@@ -275,8 +275,8 @@ paths:
         '400':
           description: Missing code/state or OIDC failure
           content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
 
   # ----------------------------------------------------------------- Users
   /users:
@@ -346,8 +346,8 @@ paths:
         '409':
           description: Username already taken (`AUTH_USERNAME_TAKEN`)
           content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
   /users/me:
     get:
       tags: [Users]
@@ -722,13 +722,13 @@ paths:
         '409':
           description: Edge would create a cycle (`CYCLE_DETECTED`)
           content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
         '422':
           description: Parent type not allowed (`INVALID_EDGE_TYPE`)
           content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
   /products/{id}/composes/{childId}:
     delete:
       tags: [Products]
@@ -774,8 +774,8 @@ paths:
         '422':
           description: Target is not a PLATFORM product (`INVALID_EDGE_TYPE`)
           content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
   /products/{id}/consumes-from/{platformId}:
     delete:
       tags: [Products]
@@ -819,8 +819,8 @@ paths:
         '422':
           description: Edge type rule violated (`INVALID_EDGE_TYPE`)
           content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
   /products/{id}/depends-on/{componentId}:
     delete:
       tags: [Products]
@@ -1010,8 +1010,8 @@ paths:
         '409':
           description: Slug already in use (`SLUG_CONFLICT`)
           content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
   /component-groups/{id}:
     get:
       tags: [ComponentGroups]
@@ -1064,8 +1064,8 @@ paths:
         '409':
           description: Slug already in use (`SLUG_CONFLICT`)
           content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
     delete:
       tags: [ComponentGroups]
       summary: Delete a component group
@@ -1269,8 +1269,8 @@ paths:
         '409':
           description: A run is already in progress for this config (`RUN_IN_PROGRESS`)
           content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
   /importer-configs/{id}/runs:
     get:
       tags: [Importers]
@@ -1361,8 +1361,8 @@ paths:
         '409':
           description: Run is not active (`RUN_NOT_ACTIVE`)
           content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
 
   # ----------------------------------------------------------- Organization
   /lobs:
@@ -1754,33 +1754,52 @@ components:
     ValidationFailed:
       description: Input validation failed (`VALIDATION_FAILED`)
       content:
-        application/json:
-          schema: { $ref: '#/components/schemas/Error' }
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
     Unauthorized:
       description: Not authenticated (`AUTH_NO_SESSION`)
       content:
-        application/json:
-          schema: { $ref: '#/components/schemas/Error' }
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
     Forbidden:
       description: Insufficient role (`AUTH_FORBIDDEN`)
       content:
-        application/json:
-          schema: { $ref: '#/components/schemas/Error' }
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
     NotFound:
       description: Resource not found (`NOT_FOUND`)
       content:
-        application/json:
-          schema: { $ref: '#/components/schemas/Error' }
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
     Conflict:
       description: Conflict (e.g. `CONFLICT`, `CYCLE_DETECTED`, `SLUG_TAKEN`, `REFERENCED`)
       content:
-        application/json:
-          schema: { $ref: '#/components/schemas/Error' }
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
   schemas:
-    Error:
+    Problem:
       type: object
-      required: [code, message]
+      required:
+        - type
+        - title
+        - status
+        - detail
+        - code
+        - message
       properties:
+        type:
+          type: string
+          format: uri
+          description: A URI reference identifying the problem type.
+        title:
+          type: string
+          description: A short, human-readable summary of the problem type.
+        status:
+          type: integer
+          description: The HTTP status code generated by the origin server.
+        detail:
+          type: string
+          description: A human-readable explanation specific to this occurrence.
         code:
           type: string
           enum:
@@ -1812,7 +1831,17 @@ components:
             - RUN_NOT_ACTIVE
             - INTERNAL_ERROR
         message: { type: string }
-        details: { description: Optional details (e.g. Zod issues) }
+        details: { type: object, nullable: true, description: Optional machine-readable context (e.g. Zod issues, retryAfter). }
+        invalid-params:
+          type: array
+          nullable: true
+          description: RFC 7807 invalid-params extension for validation failures.
+          items:
+            type: object
+            properties:
+              name: { type: string }
+              reason: { type: string }
+
     EntityChange:
       type: object
       properties:

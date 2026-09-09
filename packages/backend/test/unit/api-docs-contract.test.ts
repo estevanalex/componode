@@ -189,9 +189,9 @@ describe("openapi.yaml access annotations", () => {
 });
 
 describe("error codes", () => {
-  it("spec Error.code enum matches ERROR_CODES from @componode/core", async () => {
+  it("spec Problem.code enum matches ERROR_CODES from @componode/core", async () => {
     const { ERROR_CODES } = await import("@componode/core");
-    const specCodes: string[] = spec.components.schemas.Error.properties.code.enum;
+    const specCodes: string[] = spec.components.schemas.Problem.properties.code.enum;
     expect([...specCodes].sort()).toEqual([...ERROR_CODES].sort());
   });
 });
