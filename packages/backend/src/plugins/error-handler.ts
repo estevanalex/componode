@@ -135,7 +135,25 @@ export async function errorHandler(app: FastifyInstance): Promise<void> {
     return reply.status(status).type("application/problem+json").send(problem);
   });
 
-  app.setNotFoundHandler((request: FastifyRequest, reply: FastifyReply) => {
+  app.setNotFoundHandler(async (request: FastifyRequest, reply: FastifyReply) => {
+    const accept = request.headers.accept ?? "";
+    const wantsHtml =
+      (request.method === "GET" || request.method === "HEAD") &&
+      (accept.includes("text/html") || accept === "*/*" || accept === "");
+
+    if (
+      wantsHtml &&
+      !request.url.startsWith("/api/") &&
+      request.url !== "/metrics" &&
+      typeof (reply as unknown as { sendFile?: (file: string) => Promise<void> }).sendFile === "function"
+    ) {
+      try {
+        return await (reply as unknown as { sendFile: (file: string) => Promise<void> }).sendFile("index.html");
+      } catch {
+        // fall through to problem response
+      }
+    }
+
     const problem = createProblem("NOT_FOUND", {
       message: `Route ${request.method} ${request.url} not found`,
       baseUrl: typeBase,
