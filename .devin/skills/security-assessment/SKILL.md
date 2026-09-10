@@ -38,7 +38,9 @@ You **MUST** consider the user input before proceeding. If the user provided a s
    - `researches/adrs/` individual ADR files
    - `README.md`
    - `docs/deployment.md`, `docker-compose.yml`, `Dockerfile`, `.env.example`
-   - Root and workspace `package.json` files
+   - `.nvmrc`, `.node-version`, `.tool-versions`, or any runtime-version file
+   - `.github/workflows/` CI/CD definitions
+   - Root and workspace `package.json` files (including `engines` and `packageManager`)
    - `pnpm-lock.yaml`, `package-lock.json`, or `yarn.lock`
 5. **Identify the source tree** (typical patterns):
    - Backend/API routes, services, plugins, database layer
@@ -57,6 +59,7 @@ Read, in order:
 - Foundational governance docs (`AGENTS.md`, `constitution.md`, architecture-decisions index)
 - Security-focused ADRs / rules (search for `ADR-084` through `ADR-102` or equivalent)
 - Deployment and operational docs (`docs/deployment.md`, `docker-compose.yml`, `Dockerfile`, `.env.example`)
+- Runtime and infrastructure evidence (base image tags, `package.json` `engines`, `.nvmrc`, CI runner and action versions)
 - Package manifests and lock files
 - Backend application entry, plugins (auth, session, RBAC, CORS, CSRF, helmet, rate-limit, logging, error handling, metrics), routes, services, database layer, migrations
 - Frontend entry, routing, auth pages, API client, safe-URL / external-link handling
@@ -74,8 +77,9 @@ For each area, describe the current state, cite specific files and line numbers,
 - **AuthN/AuthZ flow:** registration, login, session creation/validation/idle timeout/revocation, logout, password reset, OIDC/OAuth2, RBAC/permissions, CSRF, CORS, cookie security.
 - **Data storage and integrity:** database schema, least-privilege DB user, TLS, audit tables, append-only / immutable records, CHECK constraints, secret storage.
 - **Deployment flow:** Docker build, Compose startup, migration execution, bootstrap admin, reverse proxy / TLS assumptions, runtime user, exposed ports, unauthenticated endpoints (`/health`, `/metrics`).
+- **Runtime and infrastructure components:** Node.js/runtime version and EOL status, `package.json` `engines` and `.nvmrc`, base image (`Dockerfile`), OS packages, package-manager supply chain (pnpm/corepack), PostgreSQL base image, CI/CD runner and action versions, image scanning / SBOM practices, and any IaaC such as `init-db.sql` or reverse-proxy config.
 - **Source-code security patterns:** input validation, SQL injection prevention, XSS prevention, error-sanitization, no `sql.raw()`/`sql.fragment()` in app code, no `dangerouslySetInnerHTML`, no `eval`/`new Function`, dependency sandboxing, log redaction, secrets handling.
-- **Dependencies:** run `pnpm audit --prod` (or `npm audit --prod` / `yarn audit` as appropriate), list all findings with package, installed version, severity, GHSA/ID, and a one-line description.
+- **Dependencies and runtime supply chain:** run `pnpm audit --prod` (or `npm audit --prod` / `yarn audit` as appropriate), list all findings with package, installed version, severity, GHSA/ID, and a one-line description. Also inspect `package.json` `engines`, `packageManager`, `Dockerfile` base image, `docker-compose.yml` images, CI action tags, and any `.nvmrc`/`.node-version` for EOL/floating-tag risks.
 
 ### 3. Include Mermaid diagrams
 
@@ -107,7 +111,7 @@ Write the report using this exact Markdown outline:
 # <Project> Security Assessment Report
 
 - **Date:** <YYYY-MM-DD>
-- **Scope:** Architecture, data flow, authN/authZ, deployment, source code, dependencies
+- **Scope:** Architecture, data flow, authN/authZ, deployment, source code, dependencies, runtime and infrastructure components
 - **Methodology:** Read-only review of docs, ADRs, source code, and dependency audit
 - **Limitations:** No dynamic testing, no access to running environment
 
@@ -143,6 +147,7 @@ In the final section, explicitly state:
   - RBAC and authorization-matrix review
   - Penetration-test checklist
   - Container / supply-chain hardening report
+  - Runtime and base-image hardening report (Node.js EOL, OS packages, image SBOM)
   - Secrets-management and credential-rotation report
   - API contract / OpenAPI drift report
 
@@ -151,7 +156,7 @@ In the final section, explicitly state:
 - Do **not** edit, delete, or create any source, config, migration, workflow, or package files.
 - Do **not** commit, push, or create pull requests.
 - Do **not** run tests, builds, migrations, or any command that writes to the database or filesystem beyond the report.
-- Read-only commands are allowed and encouraged (`pnpm audit --prod`, `pnpm list -r --depth=0`, `grep`, `find`, `read`, etc.).
+- Read-only commands are allowed and encouraged (`pnpm audit --prod`, `pnpm list -r --depth=0`, `node --version`, `docker images` (if available), image scanners such as `trivy image` / `grype` (if available), `grep`, `find`, `read`, etc.).
 - If `docs/security/` does not exist, create it. Otherwise only add the dated report.
 - If a file already exists with the same date, overwrite it only if the user asked for a fresh assessment; otherwise append a revision number to the filename.
 
