@@ -18,6 +18,7 @@ The most significant risks found in this assessment are:
 3. **High:** The backend runs with `trustProxy: true` and a Fastify version vulnerable to `X-Forwarded-*` header spoofing, which weakens IP-based rate limiting and proxy-trust decisions.
 4. **High:** `@fastify/static@8.3.0` and `kysely@0.27.6` carry multiple high-severity known vulnerabilities.
 5. **High:** The session-revocation endpoint does not verify session ownership or admin role, allowing any authenticated user to revoke any other session.
+6. **Medium:** Database platform version and `pgcrypto` extension dependencies are not validated, and the `postgres:16-alpine` tag is not pinned. Deployers can connect to EOL or unpatched PostgreSQL instances, and migration 006 can fail on a clean database without `pgcrypto`.
 
 This report includes Mermaid diagrams for the end-to-end data flow, AuthN/AuthZ flow, data storage and trust boundaries, and deployment architecture. It concludes with a reproducible methodology and a list of follow-on report types.
 
@@ -41,7 +42,7 @@ This report includes Mermaid diagrams for the end-to-end data flow, AuthN/AuthZ 
 2. Mapped architecture and data flows from source to external sources.
 3. Traced the AuthN/AuthZ path (login, session, OIDC, RBAC, CSRF).
 4. Examined data storage, migrations, audit triggers, and secret resolution.
-5. Reviewed deployment artifacts (Dockerfile, Compose, `.env.example`, `init-db.sql`) and runtime/infrastructure evidence (Node version, base image tags, CI action versions).
+5. Reviewed deployment artifacts (Dockerfile, Compose, `.env.example`, `init-db.sql`) and runtime/infrastructure evidence (Node version, base image tags, database image/driver, CI action versions).
 6. Ran `pnpm audit --prod` and `pnpm list -r --depth=0` to identify known vulnerable dependencies.
 7. Compared implementation against the ADRs and `.env.example`/`docs/deployment.md`.
 
@@ -55,6 +56,7 @@ This assessment can be repeated by re-running the exact steps above. Recommended
 - **Penetration-test checklist:** Convert the findings in Section 8 into a concrete test plan (OIDC token forgery, session revocation, path traversal, rate-limit bypass, SSRF).
 - **Container/supply-chain hardening report:** Re-audit the `Dockerfile`, base image, `init-db.sql`, `pnpm install` behavior, and `pnpm-lock.yaml` exact pinning.
 - **Runtime and base-image hardening report:** Re-audit Node.js version, base OS packages, CI runner/action versions, image SBOM, and EOL status.
+- **Database platform and version risk review:** Re-audit DBMS EOL, driver/ORM, engine-specific features such as `pgcrypto`, and runtime version validation.
 - **Secrets-management report:** Re-audit `packages/backend/src/utils/secret-resolver.ts`, `importer_configs.secretRefs`, and Pino redaction paths.
 - **API contract / OpenAPI drift report:** Compare `docs/openapi.yaml` and the route handlers under `packages/backend/src/routes` per ADR-104.
 
@@ -68,7 +70,7 @@ This assessment can be repeated by re-running the exact steps above. Recommended
 |---|---|---|
 | Frontend SPA | React 18 + Vite + TanStack Query + React Router + Tailwind CSS + shadcn/ui | Same-origin in production (served by Fastify static assets); no `dangerouslySetInnerHTML` |
 | Backend API | TypeScript + Fastify 5.12.0 + Kysely 0.27.6 | API under `/api/v1`; auth except public routes, `/api/v1/health`, and `/metrics` |
-| Database | PostgreSQL 16 | CHECK constraints from `core` constants; append-only audit tables; least-privilege `componode` user |
+| Database | PostgreSQL 14+ (defaults to `postgres:16-alpine`) | CHECK constraints from `core` constants; append-only audit tables; least-privilege `componode` user; migration 006 needs `pgcrypto` extension (PG 13+) |
 | Migrations | Kysely built-in, TypeScript | Run on startup by `packages/backend/src/server.ts` |
 | Importers | 7 in-tree packages, pull-only `AsyncGenerator<DiscoveredAsset>` | No DB access; resolve secrets via backend `SecretResolver`; sandboxed by ESLint |
 | Auth | Local (Argon2id) + optional OIDC | Server-side PostgreSQL sessions; 256-bit random tokens; RBAC (`VIEWER`/`EDITOR`/`ADMIN`) |
@@ -370,7 +372,7 @@ The application is not only the code in `packages/`; it depends on a runtime and
 | Node.js runtime | `node:20-alpine` in `Dockerfile:5`; `engines.node >=20.0.0` in `package.json:37` | **Node.js 20 reached End-of-Life on 2026-04-30** (per nodejs.org and endoflife.date). The report date (2026-09-10) is 100+ days after EOL, so the runtime will not receive security patches. The `package.json` engine range and the `node:20-alpine` tag are not pinned to a patch, so builds can pull any (possibly stale or unpatched) 20.x image. |
 | pnpm | `packageManager: pnpm@9.15.2` in `package.json:35`; `corepack enable pnpm` in `Dockerfile:11` | The exact pnpm version is recorded, but `corepack enable pnpm` delegates the package-manager fetch to Node's Corepack proxy at build time, adding a supply-chain hop. |
 | Alpine OS | `node:20-alpine` base image; `wget` installed via `apk` in `Dockerfile:7` | Base OS packages are not pinned or scanned. A vulnerable `wget` or other pre-installed package would not be caught by `pnpm audit`. |
-| PostgreSQL image | `postgres:16-alpine` in `docker-compose.yml:3` | PostgreSQL 16 is still within support, but the `postgres:16-alpine` tag is floating and not pinned to a digest, so `docker compose pull` is not reproducible. |
+| Database platform | PostgreSQL 16 (`postgres:16-alpine`) in `docker-compose.yml:3` and `packages/backend/test/helpers/testcontainers.ts:31`; `pg` driver `8.23.0` in `packages/backend/package.json:41` | PostgreSQL 16 is supported until 2028-11-09, but the image tag is floating. Migrations use `gen_random_uuid()` (`packages/backend/src/db/migrations/006_session_public_id.ts:27`), which requires the `pgcrypto` extension (PG 13+), yet `init-db.sql` does not create it. The app has no runtime DB version or extension validation. |
 | GitHub Actions | `.github/workflows/ci.yml:11-41` uses `ubuntu-latest`, `actions/checkout@v4`, `pnpm/action-setup@v4`, `actions/setup-node@v4` | Floating runner image and floating action tags (not SHA-pinned) create CI supply-chain risk; a compromised or renamed tag could alter build/test behavior. |
 | `.nvmrc` / `.node-version` | Not present in the repo | No runtime-version pinning for local development or CI; builds can drift across Node 20 patch/minor versions, including EOL ones. |
 
@@ -523,6 +525,13 @@ The application is not only the code in `packages/`; it depends on a runtime and
 - **Impact:** Session hijacking if the database is compromised.
 - **Recommendation:** Consider storing a SHA-256 hash of the token in `sessions.tokenHash` and looking up by hash while keeping the raw token only in the cookie. Document the trade-off.
 
+#### 8.3.9 Database platform version and extension dependencies are not validated
+
+- **Location:** `packages/backend/src/db/migrations/006_session_public_id.ts:27`; `init-db.sql:1-9`; `packages/backend/package.json:41` (`pg`); `docker-compose.yml:3`
+- **Description:** Migration 006 uses `sql\`gen_random_uuid()\`` to backfill `sessions.publicId`. This function is provided by the `pgcrypto` extension, which is available from PostgreSQL 13 onward but is **not created by default**. `init-db.sql` does not include `CREATE EXTENSION pgcrypto;`, and the application performs no runtime check for the Postgres version or the `pgcrypto` extension before running migrations. The `docker-compose.yml` and testcontainers default to `postgres:16-alpine`, but the `DATABASE_URL` can point at any Postgres a deployer provides, including EOL versions (13 is already EOL; 14 is EOL in Nov 2026). The `pg` driver (`pg@8.23.0`) is also not explicitly audited for Postgres-version-specific bugs in CI.
+- **Impact:** Migrations can fail on a clean external Postgres without `pgcrypto`; deployers can connect to unsupported or unpatched Postgres versions without warning; and the database layer is not covered by the CI dependency-audit process.
+- **Recommendation:** Add `CREATE EXTENSION IF NOT EXISTS pgcrypto;` to `init-db.sql`; add a startup version/extension check in `packages/backend/src/db/connection.ts` or `server.ts` that enforces a minimum Postgres version and confirms `pgcrypto` is installed; document the supported Postgres range; and pin the Docker image digest.
+
 ---
 
 ### 8.4 Low
@@ -652,7 +661,7 @@ The following table is the result of `pnpm audit --prod` on 2026-09-10. **Total:
 | 098 | Importer sandboxing | Compliant | ESLint rules block `fs`, `child_process`, `process`, `eval`, `new Function`, and cross-importer/backend imports. |
 | 099 | Secure password and credential handling | Partially compliant | Argon2id and random session tokens correct, but password min length is 8 (not 12), login lacks dummy hashing, and session tokens are stored plaintext. |
 | 100 | Audit log integrity | Compliant | Append-only and terminal-state triggers in place. |
-| 101 | Database connection security | Partially compliant | SSL mode defaults to `disable`; `init-db.sql` uses a hardcoded weak password. |
+| 101 | Database connection security | Partially compliant | SSL mode defaults to `disable`; `init-db.sql` uses a hardcoded weak password; no Postgres version or `pgcrypto` extension validation at startup. |
 | 102 | Content injection in JSONB | Mostly compliant | JSONB rendered as text/JSON. No markdown rendering. URLs sanitized via `safeUrl()`. |
 
 ---
@@ -682,6 +691,7 @@ The following table is the result of `pnpm audit --prod` on 2026-09-10. **Total:
 12. Remove or implement `CSRF_SECRET`, `OIDC_ISSUER`, and `OIDC_CLIENT_ID`.
 13. Harden the Dockerfile with multi-stage builds and `pnpm install --prod` in the final image.
 14. Resolve the CSP inline-script conflict and the HSTS `includeSubDomains` drift.
+15. Add `CREATE EXTENSION IF NOT EXISTS pgcrypto;` to `init-db.sql`, add a startup check for the PostgreSQL version and `pgcrypto` availability, and document the supported PostgreSQL range.
 
 ### Ongoing
 
@@ -700,6 +710,9 @@ pnpm audit --prod
 pnpm list -r --depth=0
 docker images --filter "reference=*componode*" # if available
 docker inspect <image> # if available
+# If a running database is available:
+# psql <DATABASE_URL> -c "SELECT version();"
+# psql <DATABASE_URL> -c "SELECT * FROM pg_available_extensions WHERE name = 'pgcrypto';"
 # If available, image scanning tools:
 # trivy image <componode-image>
 # grype <componode-image>
@@ -713,7 +726,7 @@ docker inspect <image> # if available
 - `researches/architecture-decisions.md`
 - `researches/adrs/ADR-084-sql-injection-prevention.md` through `ADR-102-content-injection-in-jsonb-fields.md`
 - `docs/deployment.md`, `docker-compose.yml`, `Dockerfile`, `.env.example`, `init-db.sql`, `.nvmrc` (if present), `.node-version` (if present)
-- `packages/backend/src/app.ts`, `server.ts`, and all plugins/routes/services/migrations
+- `packages/backend/src/app.ts`, `server.ts`, and all plugins/routes/services/migrations (including `packages/backend/src/db/migrations/006_session_public_id.ts`)
 - `packages/frontend/index.html`, `src/api/client.ts`, `src/pages/login.tsx`, `src/pages/settings.tsx`, `src/components/safe-url.ts`, `src/components/external-link.tsx`
 - `packages/core/src/schemas/`, `packages/core/src/validation/`
 - `packages/importer-*/src/`
@@ -728,6 +741,7 @@ docker inspect <image> # if available
 - Penetration-test checklist
 - Container / supply-chain hardening report
 - Runtime and base-image hardening report (Node.js EOL, OS package scan, SBOM)
+- Database platform and version risk review (DBMS EOL, driver/ORM, `pgcrypto`/extensions)
 - Secrets-management and credential-rotation report
 - API contract / OpenAPI drift report
 
