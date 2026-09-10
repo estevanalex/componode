@@ -1,7 +1,7 @@
 # Componode Security Assessment Report
 
 - **Date:** 2026-09-10
-- **Scope:** Application architecture, end-to-end data flow, AuthN/AuthZ flow, data storage and integrity, deployment flow, source code, and dependency tree.
+- **Scope:** Application architecture, end-to-end data flow, AuthN/AuthZ flow, data storage and integrity, deployment flow, source code, dependency tree, and runtime / infrastructure components (Node.js, base image, CI/CD).
 - **Methodology:** Read-only review of `AGENTS.md`, `.specify/memory/constitution.md`, `researches/architecture-decisions.md`, ADR-084 through ADR-102, deployment docs, source code (`packages/backend`, `packages/frontend`, `packages/core`, `packages/importer-*`), and `pnpm audit --prod`. No source code was changed; no dynamic testing was performed.
 - **Limitations:** No live deployment, no penetration testing, no access to a running container or external IdP. Findings are based on static source and configuration review.
 
@@ -9,14 +9,15 @@
 
 ## 1. Executive Summary
 
-Componode is an open-source, self-hosted Digital Product Asset Management (DPAM) tool built as a pnpm monorepo. The v1 architecture is single-organization, with a Fastify/Kysely/PostgreSQL backend, a React/Vite frontend, and seven in-tree importers. The project has a strong foundation of security decisions (Argon2id, server-side sessions, RBAC default-deny, CSRF double-submit, security headers, audit logging) captured in 19 secure-development ADRs (084–102).
+Componode is an open-source, self-hosted Digital Product Asset Management (DPAM) tool built as a pnpm monorepo. The v1 architecture is single-organization, with a Fastify/Kysely/PostgreSQL backend on Node.js 20, a React/Vite frontend, and seven in-tree importers. The project has a strong foundation of security decisions (Argon2id, server-side sessions, RBAC default-deny, CSRF double-submit, security headers, audit logging) captured in 19 secure-development ADRs (084–102).
 
 The most significant risks found in this assessment are:
 
 1. **Critical:** The OIDC callback trusts a base64-decoded ID token without signature, issuer, audience, or expiry verification, enabling authentication/authorization bypass when OIDC is enabled.
-2. **High:** The backend runs with `trustProxy: true` and a Fastify version vulnerable to `X-Forwarded-*` header spoofing, which weakens IP-based rate limiting and proxy-trust decisions.
-3. **High:** `@fastify/static@8.3.0` and `kysely@0.27.6` carry multiple high-severity known vulnerabilities.
-4. **High:** The session-revocation endpoint does not verify session ownership or admin role, allowing any authenticated user to revoke any other session.
+2. **High:** The application runs on **Node.js 20**, which reached End-of-Life on 2026-04-30. As of this report, the runtime is no longer receiving security patches, yet the `Dockerfile` uses the floating `node:20-alpine` tag and `package.json` allows any `>=20.0.0`.
+3. **High:** The backend runs with `trustProxy: true` and a Fastify version vulnerable to `X-Forwarded-*` header spoofing, which weakens IP-based rate limiting and proxy-trust decisions.
+4. **High:** `@fastify/static@8.3.0` and `kysely@0.27.6` carry multiple high-severity known vulnerabilities.
+5. **High:** The session-revocation endpoint does not verify session ownership or admin role, allowing any authenticated user to revoke any other session.
 
 This report includes Mermaid diagrams for the end-to-end data flow, AuthN/AuthZ flow, data storage and trust boundaries, and deployment architecture. It concludes with a reproducible methodology and a list of follow-on report types.
 
@@ -27,12 +28,12 @@ This report includes Mermaid diagrams for the end-to-end data flow, AuthN/AuthZ 
 ### 2.1 Scope
 
 - **Governance:** `AGENTS.md`, `.specify/memory/constitution.md`, `researches/architecture-decisions.md`, `researches/adrs/ADR-084-*.md` through `ADR-102-*.md`.
-- **Deployment:** `docs/deployment.md`, `docker-compose.yml`, `Dockerfile`, `.env.example`, `init-db.sql`.
+- **Deployment and runtime:** `docs/deployment.md`, `docker-compose.yml`, `Dockerfile`, `.env.example`, `init-db.sql`, `package.json` `engines`, `.nvmrc` / `.node-version` (if any), `.github/workflows/*.yml`.
 - **Backend:** `packages/backend/src/app.ts`, `server.ts`, all plugins under `packages/backend/src/plugins/`, routes, services, database connection, migrations, and utilities.
 - **Frontend:** `packages/frontend/index.html`, `src/main.tsx`, `src/api/client.ts`, `src/pages/login.tsx`, `src/pages/settings.tsx`, `src/components/safe-url.ts`, `src/components/external-link.tsx`.
 - **Core:** `packages/core/src/schemas/`, `packages/core/src/validation/`, `packages/core/src/contracts/`.
 - **Importers:** all `packages/importer-*/src/` packages.
-- **Dependencies:** root and workspace `package.json` files, `pnpm-lock.yaml`, `pnpm audit --prod`, `pnpm list -r --depth=0`.
+- **Dependencies and runtime supply chain:** root and workspace `package.json` files, `pnpm-lock.yaml`, `pnpm audit --prod`, `pnpm list -r --depth=0`, `Dockerfile` base image, `docker-compose.yml` images, CI action versions.
 
 ### 2.2 Methodology
 
@@ -40,7 +41,7 @@ This report includes Mermaid diagrams for the end-to-end data flow, AuthN/AuthZ 
 2. Mapped architecture and data flows from source to external sources.
 3. Traced the AuthN/AuthZ path (login, session, OIDC, RBAC, CSRF).
 4. Examined data storage, migrations, audit triggers, and secret resolution.
-5. Reviewed deployment artifacts (Dockerfile, Compose, `.env.example`, `init-db.sql`).
+5. Reviewed deployment artifacts (Dockerfile, Compose, `.env.example`, `init-db.sql`) and runtime/infrastructure evidence (Node version, base image tags, CI action versions).
 6. Ran `pnpm audit --prod` and `pnpm list -r --depth=0` to identify known vulnerable dependencies.
 7. Compared implementation against the ADRs and `.env.example`/`docs/deployment.md`.
 
@@ -53,6 +54,7 @@ This assessment can be repeated by re-running the exact steps above. Recommended
 - **RBAC and authorization-matrix review:** Re-grep `preHandler: [app.verifySession` and `requireRole(` in `packages/backend/src/routes` and compare to ADR-054.
 - **Penetration-test checklist:** Convert the findings in Section 8 into a concrete test plan (OIDC token forgery, session revocation, path traversal, rate-limit bypass, SSRF).
 - **Container/supply-chain hardening report:** Re-audit the `Dockerfile`, base image, `init-db.sql`, `pnpm install` behavior, and `pnpm-lock.yaml` exact pinning.
+- **Runtime and base-image hardening report:** Re-audit Node.js version, base OS packages, CI runner/action versions, image SBOM, and EOL status.
 - **Secrets-management report:** Re-audit `packages/backend/src/utils/secret-resolver.ts`, `importer_configs.secretRefs`, and Pino redaction paths.
 - **API contract / OpenAPI drift report:** Compare `docs/openapi.yaml` and the route handlers under `packages/backend/src/routes` per ADR-104.
 
@@ -72,6 +74,9 @@ This assessment can be repeated by re-running the exact steps above. Recommended
 | Auth | Local (Argon2id) + optional OIDC | Server-side PostgreSQL sessions; 256-bit random tokens; RBAC (`VIEWER`/`EDITOR`/`ADMIN`) |
 | Observability | Pino + Prometheus + OpenTelemetry | Pino redaction of secret-bearing fields; `/metrics` unauthenticated but intended for network restriction |
 | Deployment | Docker Compose (one app container) | Backend serves static frontend; external TLS reverse proxy expected but not provided |
+| Runtime | Node.js 20 (`node:20-alpine` Docker image) | Executes the Fastify backend; image tag not pinned to a patch; Node 20 reached EOL 2026-04-30 |
+| Package manager | pnpm 9.15.2 (via Corepack) | Lock file is exact; `package.json` still uses `^` ranges |
+| CI/CD | GitHub Actions (`ubuntu-latest`, `actions/*@v4`) | Lint, typecheck, test, build; action tags are floating, not SHA-pinned |
 
 ### 3.2 End-to-End Data Flow
 
@@ -356,6 +361,21 @@ flowchart TD
 - `GET /metrics` returns full Prometheus metrics (`packages/backend/src/routes/metrics.ts:5-11`).
 - Both are intentional for health checks and monitoring but rely on network-level access control in production (ADR-069, ADR-097).
 
+### 6.5 Runtime and Infrastructure Components
+
+The application is not only the code in `packages/`; it depends on a runtime and surrounding infrastructure that also present attack surface. The following table captures the runtime and infrastructure components visible in the repository.
+
+| Component | Version / Source | Security Note |
+|---|---|---|
+| Node.js runtime | `node:20-alpine` in `Dockerfile:5`; `engines.node >=20.0.0` in `package.json:37` | **Node.js 20 reached End-of-Life on 2026-04-30** (per nodejs.org and endoflife.date). The report date (2026-09-10) is 100+ days after EOL, so the runtime will not receive security patches. The `package.json` engine range and the `node:20-alpine` tag are not pinned to a patch, so builds can pull any (possibly stale or unpatched) 20.x image. |
+| pnpm | `packageManager: pnpm@9.15.2` in `package.json:35`; `corepack enable pnpm` in `Dockerfile:11` | The exact pnpm version is recorded, but `corepack enable pnpm` delegates the package-manager fetch to Node's Corepack proxy at build time, adding a supply-chain hop. |
+| Alpine OS | `node:20-alpine` base image; `wget` installed via `apk` in `Dockerfile:7` | Base OS packages are not pinned or scanned. A vulnerable `wget` or other pre-installed package would not be caught by `pnpm audit`. |
+| PostgreSQL image | `postgres:16-alpine` in `docker-compose.yml:3` | PostgreSQL 16 is still within support, but the `postgres:16-alpine` tag is floating and not pinned to a digest, so `docker compose pull` is not reproducible. |
+| GitHub Actions | `.github/workflows/ci.yml:11-41` uses `ubuntu-latest`, `actions/checkout@v4`, `pnpm/action-setup@v4`, `actions/setup-node@v4` | Floating runner image and floating action tags (not SHA-pinned) create CI supply-chain risk; a compromised or renamed tag could alter build/test behavior. |
+| `.nvmrc` / `.node-version` | Not present in the repo | No runtime-version pinning for local development or CI; builds can drift across Node 20 patch/minor versions, including EOL ones. |
+
+**Scope limitation:** `pnpm audit --prod`, `npm audit`, and `yarn audit` only inspect package dependencies, not the Node.js runtime, the base OS, or container images. A complete supply-chain assessment requires separate tools such as `trivy image`, `grype`, `syft`, or GitHub's `dependency-review-action` with image/SBOM support.
+
 ---
 
 ## 7. Security Controls (Strengths)
@@ -435,6 +455,13 @@ flowchart TD
 - **Description:** `pnpm audit --prod` reports four high-severity `fast-uri` advisories (GHSA-5jgf-p345-68v8, GHSA-f65p-4m7j-42xc, GHSA-fph4-wmhf-6fwf, GHSA-jqff-g426-hqxp), each for both the 4.x and 3.x major versions, covering host confusion via skipped IDN canonicalization, malformed IPv6 normalization, and repeated percent-decoding. Although the application does not use `fast-uri` directly, Fastify/Ajv rely on it for URI format validation and JSON serialization.
 - **Impact:** Potential SSRF / host-confusion in URLs processed by Fastify (e.g., `redirect_uri`, `issuer`).
 - **Recommendation:** Upgrade `fastify` to `>=5.12.1` and regenerate `pnpm-lock.yaml`.
+
+#### 8.2.6 Node.js 20 runtime is end-of-life and not pinned
+
+- **Location:** `Dockerfile:5`; `package.json:35-37`; `docker-compose.yml:3` (transitively for the Postgres image)
+- **Description:** The application is built and run on `node:20-alpine`. Node.js 20 reached **End-of-Life on 30 April 2026** (per the official Node.js release schedule and endoflife.date), so by the report date (2026-09-10) it is no longer receiving security patches. The `Dockerfile` does not pin to a patch-level image (e.g., `node:20.20.2-alpine`), and `package.json` `engines.node` is `>=20.0.0`, allowing any Node 20.x including pre-release, unpatched, or EOL builds. The base OS packages in the image (including `wget` installed via `apk`) are also not scanned or pinned. `pnpm audit` does not inspect the Node runtime, base image, or OS packages.
+- **Impact:** Unpatched Node.js and OS vulnerabilities can affect the HTTP parser, TLS stack, crypto, V8, libuv, and any native dependency; a supply-chain compromise of the `node:20-alpine` tag or Corepack proxy would directly compromise the production image.
+- **Recommendation:** Pin the Dockerfile to a specific Node patch image and migrate to a supported LTS (Node 22 or 24) before the next release; add an `.nvmrc` or `.node-version` matching the CI and Docker image; enable container-image scanning (e.g., `trivy image`, `grype`) in CI; and explicitly record the Node version in `docs/deployment.md`.
 
 ---
 
@@ -564,6 +591,13 @@ flowchart TD
 - **Impact:** Information disclosure and potential DoS via metrics scraping.
 - **Recommendation:** Document that `/metrics` must be restricted by a reverse proxy or network policy, or add an optional `METRICS_ALLOWED_IPS` allow-list.
 
+#### 8.4.11 CI/CD pipeline uses floating runner and action tags
+
+- **Location:** `.github/workflows/ci.yml:11-41`
+- **Description:** The CI workflow uses `runs-on: ubuntu-latest` and floating action tags (`actions/checkout@v4`, `pnpm/action-setup@v4`, `actions/setup-node@v4`). These tags resolve to whatever commit the publisher currently points to, and the runner image is not pinned. A compromised or renamed action tag, or a poisoned runner image, could alter lint/test/build results or exfiltrate build secrets.
+- **Impact:** Supply-chain compromise of the CI/CD pipeline; non-reproducible builds.
+- **Recommendation:** Pin GitHub Actions to commit SHAs and pin the runner image to a specific `ubuntu-YY.MM` version; verify action integrity with GitHub's `actions/verify` tooling where available.
+
 ---
 
 ## 9. Dependency Vulnerability Summary
@@ -593,6 +627,8 @@ The following table is the result of `pnpm audit --prod` on 2026-09-10. **Total:
 
 **Note:** The `kysely` and `fast-uri` findings are primarily relevant if user input reaches the vulnerable code paths. The current Postgres-only application code does not appear to do this for user input, but these are central dependencies and should be upgraded.
 
+**Note on scope:** `pnpm audit` (and the table above) covers package dependencies only. It does **not** cover the Node.js runtime, the container base OS, or the CI runner image. The Node 20 runtime finding in Section 8.2.6 is therefore not included in the counts above.
+
 ---
 
 ## 10. Rules / ADR Compliance Matrix
@@ -607,7 +643,7 @@ The following table is the result of `pnpm audit --prod` on 2026-09-10. **Total:
 | 089 | Security headers | Mostly compliant | Helmet active. HSTS `includeSubDomains`/`preload` deviates from ADR. CSP blocks the inline `index.html` theme script. |
 | 090 | No secrets in logs | Mostly compliant | Pino redaction covers most fields but does not explicitly redact `importer_configs.scope` or `importer_configs.secretRefs` (values are JSONB). |
 | 091 | No secrets in commits | Compliant | `.gitignore` excludes `.env`, keys, secrets. |
-| 092 | Dependency scanning | Non-compliant | `package.json` files use `^`; CI `.github/workflows/ci.yml:28-41` does not run `pnpm audit`. |
+| 092 | Dependency scanning | Non-compliant | `package.json` files use `^`; CI `.github/workflows/ci.yml:28-41` does not run `pnpm audit`; no Node.js runtime, base-image, or OS package scanning is performed. |
 | 093 | TLS / HTTPS for production | Non-compliant (default) | `DATABASE_SSL_MODE` defaults to `disable`; example `docker-compose.yml` does not include a TLS reverse proxy. |
 | 094 | GET routes must not have side effects | Non-compliant | OIDC callback (`GET /api/v1/auth/oidc/callback`) creates sessions/users. |
 | 095 | Input validation | Mostly compliant | Zod at route boundaries. `POST /auth/password/reset` and `POST /sessions/:id/revoke` lack full validation/ownership checks. |
@@ -625,10 +661,11 @@ The following table is the result of `pnpm audit --prod` on 2026-09-10. **Total:
 
 ### Immediately (before next release)
 
-1. Patch/upgrade `fastify`, `@fastify/static`, and `kysely` to resolve the 18 known vulnerabilities.
-2. Fix the OIDC callback to verify the ID token signature and validate `iss`, `aud`, `exp`, `iat`, and `nonce`.
-3. Add ownership/role checks to `POST /api/v1/sessions/:id/revoke`.
-4. Change `trustProxy: true` to the actual reverse-proxy IP or hop count.
+1. Patch/upgrade `fastify`, `@fastify/static`, and `kysely` to resolve the 18 known package vulnerabilities.
+2. Migrate to a supported Node.js LTS (Node 22 or 24), pin the `Dockerfile` base image to a specific patch version, and add an `.nvmrc` so local and CI builds match the production image.
+3. Fix the OIDC callback to verify the ID token signature and validate `iss`, `aud`, `exp`, `iat`, and `nonce`.
+4. Add ownership/role checks to `POST /api/v1/sessions/:id/revoke`.
+5. Change `trustProxy: true` to the actual reverse-proxy IP or hop count.
 
 ### Short term
 
@@ -637,17 +674,18 @@ The following table is the result of `pnpm audit --prod` on 2026-09-10. **Total:
 7. Add SSRF protection to the `web-url` and `api-url` importers.
 8. Set `DATABASE_SSL_MODE` default to `require` in production and document `verify-full`.
 9. Align password minimum length to 12 and add dummy hashing for non-existent users.
+10. Pin GitHub Actions and runner images in `.github/workflows/ci.yml` to commit SHAs / specific versions to reduce CI supply-chain risk.
 
 ### Medium term
 
-10. Convert `package.json` to exact version pins and add `pnpm audit` to CI.
-11. Remove or implement `CSRF_SECRET`, `OIDC_ISSUER`, and `OIDC_CLIENT_ID`.
-12. Harden the Dockerfile with multi-stage builds and `pnpm install --prod` in the final image.
-13. Resolve the CSP inline-script conflict and the HSTS `includeSubDomains` drift.
+11. Convert `package.json` to exact version pins and add `pnpm audit` to CI.
+12. Remove or implement `CSRF_SECRET`, `OIDC_ISSUER`, and `OIDC_CLIENT_ID`.
+13. Harden the Dockerfile with multi-stage builds and `pnpm install --prod` in the final image.
+14. Resolve the CSP inline-script conflict and the HSTS `includeSubDomains` drift.
 
 ### Ongoing
 
-14. Re-run this assessment after every dependency bump and feature merge.
+15. Re-run this assessment after every dependency bump and feature merge.
 
 ---
 
@@ -657,8 +695,15 @@ The following table is the result of `pnpm audit --prod` on 2026-09-10. **Total:
 
 ```powershell
 pnpm --version
+node --version
 pnpm audit --prod
 pnpm list -r --depth=0
+docker images --filter "reference=*componode*" # if available
+docker inspect <image> # if available
+# If available, image scanning tools:
+# trivy image <componode-image>
+# grype <componode-image>
+# syft <componode-image>
 ```
 
 ### Key files reviewed
@@ -667,7 +712,7 @@ pnpm list -r --depth=0
 - `.specify/memory/constitution.md`
 - `researches/architecture-decisions.md`
 - `researches/adrs/ADR-084-sql-injection-prevention.md` through `ADR-102-content-injection-in-jsonb-fields.md`
-- `docs/deployment.md`, `docker-compose.yml`, `Dockerfile`, `.env.example`, `init-db.sql`
+- `docs/deployment.md`, `docker-compose.yml`, `Dockerfile`, `.env.example`, `init-db.sql`, `.nvmrc` (if present), `.node-version` (if present)
 - `packages/backend/src/app.ts`, `server.ts`, and all plugins/routes/services/migrations
 - `packages/frontend/index.html`, `src/api/client.ts`, `src/pages/login.tsx`, `src/pages/settings.tsx`, `src/components/safe-url.ts`, `src/components/external-link.tsx`
 - `packages/core/src/schemas/`, `packages/core/src/validation/`
@@ -682,6 +727,7 @@ pnpm list -r --depth=0
 - RBAC and authorization-matrix review
 - Penetration-test checklist
 - Container / supply-chain hardening report
+- Runtime and base-image hardening report (Node.js EOL, OS package scan, SBOM)
 - Secrets-management and credential-rotation report
 - API contract / OpenAPI drift report
 
