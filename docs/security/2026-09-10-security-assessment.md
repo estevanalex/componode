@@ -79,53 +79,53 @@ This assessment can be repeated by re-running the exact steps above. Recommended
 flowchart TD
   subgraph External["External Sources"]
     GH[GitHub]
-    AWS[AWS APIs]
+    AWS["AWS APIs"]
     AZ[Azure]
     K8s[Kubernetes]
-    WEB[Web Endpoint]
-    API[API Endpoint]
-    MCP[MCP Server]
-    IDP[OIDC IdP]
+    WEB["Web Endpoint"]
+    API["API Endpoint"]
+    MCP["MCP Server"]
+    IDP["OIDC IdP"]
   end
 
   subgraph Browser["Browser / User"]
-    FE[React SPA]
+    FE["React SPA"]
   end
 
   subgraph App["Componode Backend"]
     FAS[Fastify API]
-    AUTH[Auth/Session Plugins]
-    RBAC[RBAC Plugin]
-    CSRF[CSRF Plugin]
-    KYS[Kysely Query Builder]
-    IMP[Importer Registry & Runner]
+    AUTH["Auth / Session Plugins"]
+    RBAC["RBAC Plugin"]
+    CSRF["CSRF Plugin"]
+    KYS["Kysely Query Builder"]
+    IMP["Importer Registry & Runner"]
     SEC[SecretResolver]
-    MET[/metrics]
-    HEA[/api/v1/health]
+    MET["/metrics"]
+    HEA["/api/v1/health"]
   end
 
-  subgraph DB[PostgreSQL]
+  subgraph DB["PostgreSQL"]
     PSQL[(Database)]
   end
 
-  FE -->|HTTPS /api/v1| FAS
+  FE -->|"HTTPS /api/v1"| FAS
   FAS --> AUTH
-  AUTH -->|Set-Cookie: componode_session, componode_csrf| FE
-  FAS -->|preHandler| RBAC
-  FAS -->|preHandler| CSRF
-  FAS -->|parameterized SQL| KYS
+  AUTH -->|"Set-Cookie: componode_session, componode_csrf"| FE
+  FAS -->|"preHandler"| RBAC
+  FAS -->|"preHandler"| CSRF
+  FAS -->|"parameterized SQL"| KYS
   KYS --> PSQL
 
-  Admin -->|configure importer| FE
-  FE -->|POST /api/v1/importer-configs/:id/trigger| FAS
+  Admin -->|"configure importer"| FE
+  FE -->|"POST /api/v1/importer-configs/:id/trigger"| FAS
   FAS --> IMP
   IMP --> SEC
-  SEC -->|env var / file| ENV_SEC[(Host env / secret files)]
-  IMP -->|fetch| GH & AWS & AZ & K8s & WEB & API & MCP
-  IMP -->|yield DiscoveredAsset| FAS
-  FAS -->|upsert / reconcile| KYS
+  SEC -->|"env var / file"| ENV_SEC["Host env / secret files"]
+  IMP -->|"fetch"| GH & AWS & AZ & K8s & WEB & API & MCP
+  IMP -->|"yield DiscoveredAsset"| FAS
+  FAS -->|"upsert / reconcile"| KYS
 
-  IDP -->|GET /api/v1/auth/oidc/callback| FAS
+  IDP -->|"GET /api/v1/auth/oidc/callback"| FAS
 
   style MET fill:#f9f,stroke:#333
   style HEA fill:#f9f,stroke:#333
@@ -147,36 +147,36 @@ flowchart TD
 ```mermaid
 flowchart TD
   U[User]
-  FE[React SPA]
+  FE["React SPA"]
   FAS[Fastify]
   subgraph Auth["Auth Services"]
-    LOGIN[POST /api/v1/auth/login]
-    REG[POST /api/v1/auth/register]
-    CHG[POST /api/v1/auth/password/change]
-    RST[POST /api/v1/auth/password/reset]
-    RSTCONF[POST /api/v1/auth/password/reset/confirm]
+    LOGIN["POST /api/v1/auth/login"]
+    REG["POST /api/v1/auth/register"]
+    CHG["POST /api/v1/auth/password/change"]
+    RST["POST /api/v1/auth/password/reset"]
+    RSTCONF["POST /api/v1/auth/password/reset/confirm"]
   end
-  ARGON[Argon2id @node-rs/argon2]
-  DB[(persons / sessions)]
-  AUDIT[entity_changes / auth events]
+  ARGON["Argon2id @node-rs/argon2"]
+  DB["persons / sessions"]
+  AUDIT["entity_changes / auth events"]
 
-  U -->|username + password| FE
-  FE -->|+ x-csrf-token| FAS
+  U -->|"username + password"| FE
+  FE -->|"+ x-csrf-token"| FAS
   FAS --> LOGIN
-  LOGIN -->|select| DB
-  LOGIN -->|verify| ARGON
-  LOGIN -->|createSession| DB
-  FAS -->|Set-Cookie| FE
+  LOGIN -->|"select"| DB
+  LOGIN -->|"verify"| ARGON
+  LOGIN -->|"createSession"| DB
+  FAS -->|"Set-Cookie"| FE
 
-  FE -->|+ x-csrf-token| CHG
-  CHG -->|verify current, hash new| ARGON
-  CHG -->|update| DB
-  CHG -->|writeAuthEvent| AUDIT
+  FE -->|"+ x-csrf-token"| CHG
+  CHG -->|"verify current, hash new"| ARGON
+  CHG -->|"update"| DB
+  CHG -->|"writeAuthEvent"| AUDIT
 
-  ADMIN -->|+ x-csrf-token| RST
-  RST -->|generate reset token| DB
-  U2[User with reset token] --> RSTCONF
-  RSTCONF -->|hash token, update password| DB
+  ADMIN["Admin"] -->|"+ x-csrf-token"| RST
+  RST -->|"generate reset token"| DB
+  U2["User with reset token"] --> RSTCONF
+  RSTCONF -->|"hash token, update password"| DB
 ```
 
 ### 4.2 OIDC Authentication Flow
@@ -184,48 +184,49 @@ flowchart TD
 ```mermaid
 flowchart TD
   U[User]
-  FE[React SPA]
+  FE["React SPA"]
   FAS[Fastify]
-  OIDC[oidc-service.ts]
-  IDP[OIDC IdP]
-  DB[(oidc_config / persons / sessions)]
+  OIDC["oidc-service.ts"]
+  IDP["OIDC IdP"]
+  DB["oidc_config / persons / sessions"]
+  MEM["In-memory stateStore"]
 
-  U -->|click Login with OIDC| FE
-  FE -->|POST /api/v1/auth/oidc/login| FAS
+  U -->|"click Login with OIDC"| FE
+  FE -->|"POST /api/v1/auth/oidc/login"| FAS
   FAS --> OIDC
-  OIDC -->|generate state + PKCE| MEM[(In-memory stateStore)]
-  OIDC -->|302 redirect to IdP| FE
-  FE -->|/authorize| IDP
-  IDP -->|302 redirect with code + state| FE
-  FE -->|GET /api/v1/auth/oidc/callback| FAS
+  OIDC -->|"generate state + PKCE"| MEM
+  OIDC -->|"302 redirect to IdP"| FE
+  FE -->|"/authorize"| IDP
+  IDP -->|"302 redirect with code + state"| FE
+  FE -->|"GET /api/v1/auth/oidc/callback"| FAS
   FAS --> OIDC
-  OIDC -->|code exchange| IDP
-  OIDC -->|decodeJwtPayload — no signature verify| TOK[ID token payload]
-  TOK -->|JIT provision / lookup| DB
-  OIDC -->|createSession| DB
-  FAS -->|Set-Cookie| FE
+  OIDC -->|"code exchange"| IDP
+  OIDC -->|"decodeJwtPayload (no signature verify)"| TOK["ID token payload"]
+  TOK -->|"JIT provision / lookup"| DB
+  OIDC -->|"createSession"| DB
+  FAS -->|"Set-Cookie"| FE
 ```
 
 ### 4.3 Session and RBAC Flow
 
 ```mermaid
 flowchart TD
-  FE[Browser with componode_session]
+  FE["Browser with componode_session"]
   FAS[Fastify]
-  SESS[sessionPlugin.verifySession]
+  SESS["sessionPlugin.verifySession"]
   RBAC[requireRole]
-  DB[(sessions / persons)]
-  PERMS[(PERMISSIONS matrix)]
+  DB["sessions / persons"]
+  PERMS["PERMISSIONS matrix"]
 
-  FE -->|/api/v1/*| FAS
-  FAS -->|preHandler| SESS
-  SESS -->|lookup sessions.id = cookie| DB
-  SESS -->|check revoked / expiresAt / idle timeout| DB
-  SESS -->|load persons row| DB
-  SESS -->|req.user = {id, username, role}| FAS
-  FAS -->|preHandler| RBAC
-  RBAC -->|hasPermission(role, action)| PERMS
-  RBAC -->|403 if missing| FAS
+  FE -->|"/api/v1/*"| FAS
+  FAS -->|"preHandler"| SESS
+  SESS -->|"lookup sessions.id = cookie"| DB
+  SESS -->|"check revoked / expiresAt / idle timeout"| DB
+  SESS -->|"load persons row"| DB
+  SESS -->|"req.user = {id, username, role}"| FAS
+  FAS -->|"preHandler"| RBAC
+  RBAC -->|"hasPermission(role, action)"| PERMS
+  RBAC -->|"403 if missing"| FAS
 ```
 
 ### 4.4 Key AuthN/AuthZ Observations
@@ -259,15 +260,15 @@ flowchart TD
 flowchart TD
   subgraph Untrusted["Untrusted / Client-side"]
     B[Browser]
-    COOKIE["componode_session (HttpOny)<br/>componode_csrf (readable by JS)"]
-    LOCAL[(localStorage: theme only)]
+    COOKIE["componode_session (HttpOnly)<br/>componode_csrf (readable by JS)"]
+    LOCAL["localStorage: theme only"]
   end
 
   subgraph AppTrust["Application Trust Boundary"]
-    FAS[Fastify Backend]
-    ENV[(.env / process.env)]
-    SEC[(Host secret files)]
-    LOG[(Pino logs)]
+    FAS["Fastify Backend"]
+    ENV["(.env / process.env)"]
+    SEC["(Host secret files)"]
+    LOG["(Pino logs)"]
   end
 
   subgraph DBTrust["Database Trust Boundary"]
@@ -276,14 +277,14 @@ flowchart TD
     JSONB["JSONB: details, rawConfig,<br/>scope, secretRefs, changes,<br/>roleMapping, value"]
   end
 
-  B -->|HTTPS| FAS
+  B -->|"HTTPS"| FAS
   COOKIE --> FAS
-  FAS -->|read secrets| ENV
-  FAS -->|resolveSecrets| SEC
-  FAS -->|Kysely parameterized SQL| PSQL
+  FAS -->|"read secrets"| ENV
+  FAS -->|"resolveSecrets"| SEC
+  FAS -->|"Kysely parameterized SQL"| PSQL
   PSQL --> T
   T --> JSONB
-  FAS -->|redacted| LOG
+  FAS -->|"redacted"| LOG
 ```
 
 ### 5.3 Data Integrity Controls
@@ -303,28 +304,28 @@ flowchart TD
 ```mermaid
 flowchart TD
   subgraph Ext["External / Internet"]
-    USER[Browser / Admin]
-    IDP[OIDC IdP]
+    USER["Browser / Admin"]
+    IDP["OIDC IdP"]
   end
 
   subgraph Host["Host"]
-    DC[docker compose]
+    DC["docker compose"]
   end
 
   subgraph Network["Docker Network"]
-    PG[(postgres:16-alpine)]
-    APP[componode app<br/>node:20-alpine]
+    PG["postgres:16-alpine"]
+    APP["componode app<br/>node:20-alpine"]
   end
 
   subgraph Optional["Expected but not provided"]
-    REV[Reverse Proxy<br/>Caddy / nginx with TLS]
+    REV["Reverse Proxy<br/>Caddy / nginx with TLS"]
   end
 
-  USER -->|HTTP or HTTPS| APP
-  REV -->|TLS termination| APP
-  USER -.->|if configured| REV
-  APP -->|DATABASE_URL| PG
-  APP -->|fetch| IDP
+  USER -->|"HTTP or HTTPS"| APP
+  REV -->|"TLS termination"| APP
+  USER -.->|"if configured"| REV
+  APP -->|"DATABASE_URL"| PG
+  APP -->|"fetch"| IDP
   DC --> PG
   DC --> APP
 ```

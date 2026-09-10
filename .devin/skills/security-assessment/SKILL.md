@@ -86,6 +86,19 @@ Embed **four** Mermaid diagrams in the report (as ` ```mermaid ` blocks):
 3. **Data storage / trust-boundary diagram** — shows what lives in the browser, server memory, Postgres, env vars, secret files, and importer output; include trust boundaries.
 4. **Deployment architecture diagram** — shows Docker Compose services, reverse proxy (if documented), the host, ports, TLS termination, and health/metrics access.
 
+#### Mermaid syntax rules
+
+To ensure the diagrams render correctly in Markdown/GitHub, follow these rules:
+
+- Use `flowchart TD` (or `flowchart LR`) for all diagrams.
+- Quote **all** node labels that contain spaces, slashes (`/`), colons (`:`), dots (`.`), equals (`=`), semicolons, braces (`{}`), parentheses, `@`, `<br/>`, or hyphens as part of a value (e.g., `HEA["/api/v1/health"]` not `HEA[/api/v1/health]`).
+- Quote all arrow labels that contain any of the above characters (e.g., `FE -->|"POST /api/v1/auth/login"| LOGIN`).
+- Do **not** use the parallelogram shape `[/text/]` for labels that contain a slash or close bracket; use quoted rectangle labels instead (`["text"]`).
+- Prefer simple, short labels. Move URL/path/endpoint details into the label text rather than into custom node shapes.
+- Avoid unquoted angle brackets or unclosed quotes inside node or edge labels.
+- If a node label must span multiple lines, use the quoted `<br/>` tag inside a quoted label (`["line one<br/>line two"]`).
+- Validate each diagram by eye or with a Mermaid previewer before finalizing the report.
+
 ### 4. Report structure
 
 Write the report using this exact Markdown outline:
